@@ -5,7 +5,7 @@
 the move — everything below this section is the feature's history and still
 describes the runtime, which moved unchanged:
 
-- **The menu bar icon is the state.** 🛏 (`bed.double.fill`) whenever nothing
+- **The menu bar icon is the state.** 🛏️ (drawn in `InsomniaIcon.bedImage` to look like the emoji — a side view; SF Symbols only has the front-view `bed.double`) whenever nothing
   keeps the Mac awake — `Off`, but also `Claude` / `Claude /rc` with no
   session working: the mode says what it is *willing* to stay up for, the icon
   what is happening. ☕ (`cup.and.saucer.fill`) while this app holds
