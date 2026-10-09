@@ -21,6 +21,12 @@ describes the runtime, which moved unchanged:
 - **Test hooks on `127.0.0.1:55125`**, same paths as before
   (`/test/lid-awake/state`, `/test/lid-awake/mode/<m>`,
   `/test/lid-awake/flatline`, `/test/sleep-chime`, `/test/claude-activity`).
+- **Every arm/disarm line says who did it** (2026-10-09, after a night the mode
+  was found `Off` and the log could not tell a click from an agent):
+  `LidAwake disarmed (menu)`, `LidAwake armed always (http) — …`, with
+  `LidAwakeChangeSource` = `menu` / `http` (the `/test/lid-awake/mode/<m>` hook)
+  / `launch` (re-arm from the stored mode) / `battery floor` (the 20% floor's
+  own disarm after the flatline).
 - **Sounds are not in the repo.** `13_heartbeat.mp3` and `15_flatline.mp3` are
   read from `~/.victor-insomnia/sounds/` (on Victor's Mac a symlink to the
   tablet soundboard's assets) or `$VICTOR_INSOMNIA_SOUNDS`; without them the
