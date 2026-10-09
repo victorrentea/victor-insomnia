@@ -57,7 +57,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     @objc private func pickMode(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String,
               let wanted = LidAwakeMode(rawValue: raw) else { return }
-        lid.setMode(wanted)
+        lid.setMode(wanted, source: .menu)
         refresh()
     }
 

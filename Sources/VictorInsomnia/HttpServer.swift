@@ -78,7 +78,7 @@ final class HttpServer {
             }
             // Through the same call the menu uses, then the menu repaints:
             // a mode the menu disagrees with is the lie the tick prevents.
-            DispatchQueue.main.sync { _ = lid.setMode(mode) }
+            DispatchQueue.main.sync { _ = lid.setMode(mode, source: .http) }
             DispatchQueue.main.async(execute: onModeChanged)
             return (200, lid.stateJSON())
         case "/test/lid-awake/flatline":

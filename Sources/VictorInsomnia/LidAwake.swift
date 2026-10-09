@@ -35,6 +35,14 @@ enum LidAwakeMode: String, CaseIterable {
     var holdsRegardless: Bool { self == .always }
 }
 
+/// Who changed the mode, written next to every arm/disarm line — a mode found
+/// switched off overnight must say whether a menu click or an agent did it.
+enum LidAwakeChangeSource: String {
+    case menu, http, launch
+    /// The 20% floor's own disarm, after the flatline.
+    case batteryFloor = "battery floor"
+}
+
 enum LidAwakeSettings {
     /// The one switch this feature shipped with. Kept as the **migration
     /// source**, not as state: a Mac that had it on keeps its lid guard on an
@@ -333,15 +341,15 @@ final class LidAwake {
         guard LidAwakeSettings.isEnabled else { return }
         // `apply`, not `setMode`: re-arming must not write the mode back, or a
         // launch would quietly promote `interactive` to `background`.
-        apply(announce: false)
+        apply(announce: false, source: .launch)
     }
 
     /// Pick a mode from the menu: store it, then land in it.
     @discardableResult
-    func setMode(_ mode: LidAwakeMode) -> Bool {
+    func setMode(_ mode: LidAwakeMode, source: LidAwakeChangeSource) -> Bool {
         LidAwakeSettings.mode = mode
         // The lub-dub only when there is a new state to prove, never on off.
-        return apply(announce: mode != .off)
+        return apply(announce: mode != .off, source: source)
     }
 
     /// Arm or disarm. Returns whether the kernel agreed — a `false` means the
@@ -353,15 +361,15 @@ final class LidAwake {
     /// down before the click has finished — the row ticked, the Mac free to
     /// sleep, which is the honest state.
     @discardableResult
-    func setEnabled(_ enabled: Bool, announce: Bool = true) -> Bool {
+    func setEnabled(_ enabled: Bool, announce: Bool = true, source: LidAwakeChangeSource) -> Bool {
         LidAwakeSettings.isEnabled = enabled
-        return apply(announce: announce)
+        return apply(announce: announce, source: source)
     }
 
     /// Arm or disarm to match whatever the mode currently says, without
     /// touching the mode itself.
     @discardableResult
-    private func apply(announce: Bool) -> Bool {
+    private func apply(announce: Bool, source: LidAwakeChangeSource) -> Bool {
         let enabled = LidAwakeSettings.isEnabled
         // The flag can already be up from before an app restart, so start from
         // what the kernel says rather than from an assumption.
@@ -374,7 +382,7 @@ final class LidAwake {
             stopTimer()
             net.stop()
             stalled = false
-            insomniaInfo("LidAwake disarmed")
+            insomniaInfo("LidAwake disarmed (\(source.rawValue))")
             return true
         }
 
@@ -382,7 +390,7 @@ final class LidAwake {
         // only moment a missing sudoers rule can be reported. Prove the flag
         // actually moves before ticking the row.
         guard Self.setSleepDisabled(true) else {
-            insomniaError("LidAwake: pmset refused — is the disablesleep sudoers rule installed? (./install-sudoers.sh)")
+            insomniaError("LidAwake: pmset refused (\(source.rawValue)) — is the disablesleep sudoers rule installed? (./install-sudoers.sh)")
             LidAwakeSettings.isEnabled = false
             boostForBeats(false)
             stopTimer()
@@ -390,7 +398,7 @@ final class LidAwake {
             return false
         }
         holding = true
-        insomniaInfo("LidAwake armed — watching for working Claude sessions with internet, "
+        insomniaInfo("LidAwake armed \(LidAwakeSettings.mode.rawValue) (\(source.rawValue)) — watching for working Claude sessions with internet, "
             + (LidAwakeSettings.sleepsUnderFloor ? "floor \(LidAwakePolicy.batteryFloorPercent)%" : "no battery floor"))
         // Before the first tick: the offline clock has to be running (and
         // starting from now) before anything can ask how long it has been.
@@ -752,7 +760,7 @@ final class LidAwake {
                 self.farewellPlayer = nil
                 LidAwake.lastFarewellAt = Date()
                 self.queue.async { self.farewellInFlight = false }
-                self.setEnabled(false, announce: false)
+                self.setEnabled(false, announce: false, source: .batteryFloor)
                 self.onAutoDisabled?(pct)
             }
             return
