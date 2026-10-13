@@ -41,7 +41,9 @@ final class InsomniaIconTests: XCTestCase {
 
     func testTheDigitsAreClaudeSlashRc() {
         let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1)
-        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .interactive), "2/1")
+        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .interactive), "2")
+        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .always), "2/1")
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 3), mode: .interactive), "")
         XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .background), "2/1")
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 3), mode: .always), "/3")
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 4, rc: 0), mode: .background), "4")

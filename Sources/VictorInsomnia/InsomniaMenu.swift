@@ -46,9 +46,14 @@ enum InsomniaMenu {
     /// it is not zero: `2`, `/1`, `2/1` — the slash marks the remote number.
     /// Nothing at all when no session works, or when the mode is `Off` and
     /// none of them would keep the Mac up anyway — the bed says it alone.
+    /// **The remote half only where remote sessions keep the Mac up**
+    /// (`holdsRemote`: `Claude /rc`, `Always`; Victor, same day: *"display
+    /// the remote sessions if and only if remote control is supposed to keep
+    /// the laptop alive"*) — under `Claude` they count for nothing.
     static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> String {
-        guard mode != .off, let counts else { return "" }
-        return (counts.claude > 0 ? "\(counts.claude)" : "") + (counts.rc > 0 ? "/\(counts.rc)" : "")
+        guard mode.holdsInteractive, let counts else { return "" }
+        let rc = mode.holdsRemote ? counts.rc : 0
+        return (counts.claude > 0 ? "\(counts.claude)" : "") + (rc > 0 ? "/\(rc)" : "")
     }
 
     static let floorLabel = "Sleep under \(LidAwakePolicy.batteryFloorPercent)%"
@@ -119,9 +124,10 @@ enum InsomniaIcon: Equatable {
     /// then *"barely visible… as high as it can… increase the contrast"*):
     /// 11pt heavy lime under a thick black outline, nudged left onto the
     /// cup's body, off the handle; then *"the coffee cup a bit below and the
-    /// three a bit higher, so it fits the black part"*: the icon is 8pt taller
-    /// than the cup, which sits at its bottom, and the digits ride on the
-    /// cup's rim, mostly over the menu bar's own black. Lime — none of the cups is
+    /// three a bit higher"*, then *"a bit lower, so it fits the black area of
+    /// the coffee"*: the glyph is centred on the cup's hollow top — the
+    /// coffee — with the cup at the bottom of an icon 4pt taller than it, so
+    /// the digit has room above the rim. Lime — none of the cups is
     /// green, so it never melts into an orange or red one — over a black
     /// outline that keeps it legible on a light menu bar too. Picked from
     /// yellow / green / teal / white / blue rendered on all three cups, dark
@@ -137,7 +143,7 @@ enum InsomniaIcon: Equatable {
         let body = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: Self.lime])
         let text = body.size()
         let width = max(base.size.width, text.width + 2)
-        let height = base.size.height + 8
+        let height = base.size.height + 4
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
             let spot = NSRect(x: (width - base.size.width) / 2, y: 0,
                               width: base.size.width, height: base.size.height)
@@ -147,7 +153,10 @@ enum InsomniaIcon: Equatable {
             } else {
                 base.draw(in: spot)
             }
-            let at = NSPoint(x: (width - text.width) / 2 - 1.5, y: height - 12)
+            // Glyph centre on the coffee: the cup symbol's hollow top, measured
+            // at x 10.25, y 12 of its 21 × 16.
+            let at = NSPoint(x: spot.minX + 10.25 * base.size.width / 21 - text.width / 2,
+                             y: 12 * base.size.height / 16 - font.capHeight / 2 + font.descender)
             outline.draw(at: at)
             body.draw(at: at)
             return true
