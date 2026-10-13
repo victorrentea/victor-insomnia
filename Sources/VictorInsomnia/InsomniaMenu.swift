@@ -117,8 +117,11 @@ enum InsomniaIcon: Equatable {
     /// still read it"*, then *"3 or 3/1 or /1 should stay centred on the
     /// coffee… bordered by one pixel, black"*; a top-right badge came first;
     /// then *"barely visible… as high as it can… increase the contrast"*):
-    /// 11pt heavy lime under a thick black outline, raised into the cup's
-    /// dark top and nudged left onto the cup's body, off the handle. Lime — none of the cups is
+    /// 11pt heavy lime under a thick black outline, nudged left onto the
+    /// cup's body, off the handle; then *"the coffee cup a bit below and the
+    /// three a bit higher, so it fits the black part"*: the icon is 8pt taller
+    /// than the cup, which sits at its bottom, and the digits ride on the
+    /// cup's rim, mostly over the menu bar's own black. Lime — none of the cups is
     /// green, so it never melts into an orange or red one — over a black
     /// outline that keeps it legible on a light menu bar too. Picked from
     /// yellow / green / teal / white / blue rendered on all three cups, dark
@@ -134,7 +137,7 @@ enum InsomniaIcon: Equatable {
         let body = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: Self.lime])
         let text = body.size()
         let width = max(base.size.width, text.width + 2)
-        let height = base.size.height + 4
+        let height = base.size.height + 8
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
             let spot = NSRect(x: (width - base.size.width) / 2, y: 0,
                               width: base.size.width, height: base.size.height)
@@ -144,7 +147,7 @@ enum InsomniaIcon: Equatable {
             } else {
                 base.draw(in: spot)
             }
-            let at = NSPoint(x: (width - text.width) / 2 - 1.5, y: (base.size.height - text.height) / 2 + 3.5)
+            let at = NSPoint(x: (width - text.width) / 2 - 1.5, y: height - 12)
             outline.draw(at: at)
             body.draw(at: at)
             return true
