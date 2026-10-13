@@ -18,8 +18,10 @@ describes the runtime, which moved unchanged:
   for both; nothing when none works or the mode is `Off`. Counted every tick,
   both halves whatever the mode (`LidAwake.counts`, repainted from
   `onCountsChanged`), formatted in `InsomniaMenu.iconCounts`. Drawn lime,
-  11pt heavy under a thick black outline, centred on the coffee (the cup's
-  hollow top), the cup lowered to make room. The `/rc` half only in modes
+  11pt heavy under a thick black outline, centred over the coffee (the cup's
+  hollow top) and the black above it, the cup lowered 7pt to make room; the
+  outline is 16 offset black copies, not a stroke (miter spikes). The menu
+  rows' counts are green too (`InsomniaMenu.attributedLabel`). The `/rc` half only in modes
   where remote sessions keep the Mac up (`holdsRemote`)
   (`InsomniaIcon.image(digits:)`) — not as a button title beside it (it read
   as a separate menu bar item), nor as a top-right badge (tried first).

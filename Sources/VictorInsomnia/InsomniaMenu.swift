@@ -40,6 +40,25 @@ enum InsomniaMenu {
         }
     }
 
+    /// The same row with its counts in the icon's green (2026-10-13, Victor:
+    /// *"the two in the menu name should also be displayed in green, just as
+    /// the number"*): the digits only, not the brackets.
+    static func attributedLabel(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> NSAttributedString {
+        let font = NSFont.menuFont(ofSize: 0)
+        let row = NSMutableAttributedString(string: label(mode, counts: counts), attributes: [.font: font])
+        let text = row.string as NSString
+        var from = 0
+        while true {
+            let found = text.rangeOfCharacter(from: .decimalDigits, options: [], range: NSRange(location: from, length: text.length - from))
+            if found.location == NSNotFound { break }
+            var end = found.location
+            while end < text.length, CharacterSet.decimalDigits.contains(UnicodeScalar(text.character(at: end)) ?? " ") { end += 1 }
+            row.addAttribute(.foregroundColor, value: InsomniaIcon.countGreen, range: NSRange(location: found.location, length: end - found.location))
+            from = end
+        }
+        return row
+    }
+
     /// The two small digits beside the menu bar icon (2026-10-13, Victor:
     /// *"how many instances of Claude slash how many remote instances"*):
     /// `claude/rc`, the sessions working right now, each half shown only when
@@ -117,33 +136,30 @@ enum InsomniaIcon: Equatable {
         return image
     }
 
-    /// **The digits sit centred on the icon** (2026-10-13, Victor: *"not next
-    /// to the coffee, but over it… a different colour… a border so you can
-    /// still read it"*, then *"3 or 3/1 or /1 should stay centred on the
-    /// coffee… bordered by one pixel, black"*; a top-right badge came first;
-    /// then *"barely visible… as high as it can… increase the contrast"*):
-    /// 11pt heavy lime under a thick black outline, nudged left onto the
-    /// cup's body, off the handle; then *"the coffee cup a bit below and the
-    /// three a bit higher"*, then *"a bit lower, so it fits the black area of
-    /// the coffee"*: the glyph is centred on the cup's hollow top — the
-    /// coffee — with the cup at the bottom of an icon 4pt taller than it, so
-    /// the digit has room above the rim. Lime — none of the cups is
-    /// green, so it never melts into an orange or red one — over a black
-    /// outline that keeps it legible on a light menu bar too. Picked from
-    /// yellow / green / teal / white / blue rendered on all three cups, dark
-    /// and light. A template image can't carry a coloured badge, so the
-    /// badged plain looks paint themselves white or black from the appearance
-    /// they are drawn in; the image is redrawn when that changes.
+    /// **The digits sit on the coffee** (2026-10-13, Victor, in turns: *"not
+    /// next to the coffee, but over it… a different colour… a border so you
+    /// can still read it"* → *"centred on the coffee"* → *"barely visible…
+    /// increase the contrast"* → *"raise a bit the digit, lower a bit the
+    /// cup… they should not disturb the bottom part"*). 11pt heavy lime with
+    /// a black outline, its glyph centred 16.5pt up the cup — over the cup's
+    /// dark top, the coffee, and the menu bar's black above it, clear of the
+    /// cup's body — with the cup at the bottom of an icon 7pt taller than it.
+    /// Placed by eye from renders of 2, 3, 4 and 2/1 at four heights.
+    /// Lime because none of the cups is green.
+    ///
+    /// The outline is the digits drawn black 16 times around a 1.3pt circle,
+    /// not a text stroke: a stroke that thick grows miter spikes off the
+    /// corners of `2` and `/`. A template image can't carry a coloured badge,
+    /// so the badged plain looks paint themselves white or black from the
+    /// appearance they are drawn in; the image is redrawn when that changes.
     func image(digits: String) -> NSImage? {
         guard !digits.isEmpty, let base = image else { return image }
         let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .heavy)
-        let outline = NSAttributedString(string: digits, attributes: [
-            .font: font, .strokeColor: NSColor.black, .strokeWidth: 28.0, .foregroundColor: NSColor.clear,
-        ])
+        let shadow = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: NSColor.black])
         let body = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: Self.lime])
         let text = body.size()
-        let width = max(base.size.width, text.width + 2)
-        let height = base.size.height + 4
+        let width = max(base.size.width, text.width + 3)
+        let height = base.size.height + 7
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
             let spot = NSRect(x: (width - base.size.width) / 2, y: 0,
                               width: base.size.width, height: base.size.height)
@@ -153,11 +169,14 @@ enum InsomniaIcon: Equatable {
             } else {
                 base.draw(in: spot)
             }
-            // Glyph centre on the coffee: the cup symbol's hollow top, measured
-            // at x 10.25, y 12 of its 21 × 16.
+            // Centred over the coffee: the cup symbol's hollow top is at
+            // x 10.25 of its 21pt width.
             let at = NSPoint(x: spot.minX + 10.25 * base.size.width / 21 - text.width / 2,
-                             y: 12 * base.size.height / 16 - font.capHeight / 2 + font.descender)
-            outline.draw(at: at)
+                             y: 16.5 * base.size.height / 16 - font.capHeight / 2 + font.descender)
+            for step in 0..<16 {
+                let angle = CGFloat(step) * .pi / 8
+                shadow.draw(at: NSPoint(x: at.x + 1.3 * cos(angle), y: at.y + 1.3 * sin(angle)))
+            }
             body.draw(at: at)
             return true
         }
@@ -167,6 +186,14 @@ enum InsomniaIcon: Equatable {
     }
 
     private static let lime = NSColor(srgbRed: 0.2, green: 1, blue: 0.2, alpha: 1)
+
+    /// The counts' green in the menu rows, the icon's convention carried over:
+    /// the icon's lime on a dark menu, a darker green on a light one, where
+    /// lime would vanish into the white.
+    static let countGreen = NSColor(name: "InsomniaCountGreen") { look in
+        look.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? lime : NSColor(srgbRed: 0, green: 0.55, blue: 0, alpha: 1)
+    }
 
     private static func tinted(_ template: NSImage, _ color: NSColor) -> NSImage {
         NSImage(size: template.size, flipped: false) { r in

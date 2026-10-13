@@ -48,7 +48,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         let counts = ClaudeActivity.workingCounts()
-        for (mode, item) in modeItems { item.title = InsomniaMenu.label(mode, counts: counts) }
+        for (mode, item) in modeItems { item.attributedTitle = InsomniaMenu.attributedLabel(mode, counts: counts) }
         refresh()
     }
 
