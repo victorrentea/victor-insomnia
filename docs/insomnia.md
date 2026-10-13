@@ -914,6 +914,10 @@ the row and lets the closed lid sleep the Mac the ordinary way.
 - 20 exactly still runs — "sub 20%" means below.
 - **Optional since 2026-10-07**: the `Sleep under 20%` checkbox in the submenu.
 - **It ends in the flatline since 2026-10-07**: Bassos, then 🫀, then the sleep.
+- **It is captioned since 2026-10-13** (`FloorOverlay`): heard at 19% with the
+  lid open, the flatline did not say *why*. A red-rimmed panel at the top of the
+  screen says "🪫 Battery N% — Insomnia stood down" while the sound plays; a
+  click or 30 s dismisses it. `/test/floor-overlay` shows it.
 - **An unreadable battery is not a stand-down.** A failed read is not evidence of
   a low charge, and taking the machine down mid-flight on a missing number is the
   worse of the two mistakes.

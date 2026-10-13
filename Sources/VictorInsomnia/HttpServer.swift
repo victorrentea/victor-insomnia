@@ -84,6 +84,9 @@ final class HttpServer {
         case "/test/lid-awake/flatline":
             lid.playFlatlineForTest()
             return (200, "{\"ok\":true}")
+        case "/test/floor-overlay":
+            DispatchQueue.main.async { FloorOverlay.show(battery: LidAwakePolicy.batteryFloorPercent - 1) }
+            return (200, "{\"ok\":true}")
         case "/test/sleep-chime":
             SleepChime.sound()
             return (200, "{\"ok\":true}")

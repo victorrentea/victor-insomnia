@@ -744,6 +744,8 @@ final class LidAwake {
             // shut lid, the same rule as the pulse: at the desk the goodbye
             // goes out at whatever the slider says.
             if Self.isLidClosed() { boostForBeats(true) }
+            // …and the same goodbye in words, for a screen someone is looking at.
+            DispatchQueue.main.async { FloorOverlay.show(battery: pct) }
             for i in 0..<3 {
                 DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.25) { [weak self] in
                     self?.beep(named: "Basso")
