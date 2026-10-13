@@ -5,7 +5,8 @@ import AppKit
 /// `rc` = the sessions opened from the phone over Claude Code remote control.
 enum InsomniaMenu {
 
-    static func label(_ mode: LidAwakeMode) -> String {
+    /// The mode's bare name, for the tooltip.
+    static func name(_ mode: LidAwakeMode) -> String {
         switch mode {
         case .off: return "Off"
         case .interactive: return "Claude"
@@ -14,6 +15,18 @@ enum InsomniaMenu {
         }
     }
 
+    /// Trails each row (2026-10-13): what the mode does to the Mac at a
+    /// glance — sleeps, stays up for Claude, stays up no matter what.
+    static func emoji(_ mode: LidAwakeMode) -> String {
+        switch mode {
+        case .off: return "🛌"
+        case .interactive, .background: return "☕"
+        case .always: return "⚠️"
+        }
+    }
+
+    static func label(_ mode: LidAwakeMode) -> String { "\(name(mode)) \(emoji(mode))" }
+
     /// The rows with the count of sessions **working** right now — the ones
     /// that would actually keep the laptop from sleeping. Each row names what
     /// it holds: `Claude (2)`, and `Claude (2) /rc (1)` because that mode holds
@@ -21,8 +34,8 @@ enum InsomniaMenu {
     static func label(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> String {
         guard let counts else { return label(mode) }
         switch mode {
-        case .interactive: return "Claude (\(counts.claude))"
-        case .background: return "Claude (\(counts.claude)) /rc (\(counts.rc))"
+        case .interactive: return "Claude (\(counts.claude)) \(emoji(mode))"
+        case .background: return "Claude (\(counts.claude)) /rc (\(counts.rc)) \(emoji(mode))"
         case .off, .always: return label(mode)
         }
     }
@@ -37,7 +50,7 @@ enum InsomniaMenu {
     /// The menu bar button's hover text: the mode, and what it is doing.
     static func tooltip(mode: LidAwakeMode, holding: Bool) -> String {
         let doing = holding ? "holding the Mac awake" : "the Mac may sleep"
-        return "Insomnia: \(label(mode)) — \(doing)"
+        return "Insomnia: \(name(mode)) — \(doing)"
     }
 }
 

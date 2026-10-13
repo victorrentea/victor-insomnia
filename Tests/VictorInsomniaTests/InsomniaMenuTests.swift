@@ -42,11 +42,12 @@ final class InsomniaMenuTests: XCTestCase {
 
     func testTheClaudeRowsCarryTheirWorkingCountsInBrackets() {
         let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1)
-        XCTAssertEqual(Menu.label(.interactive, counts: counts), "Claude (2)")
-        XCTAssertEqual(Menu.label(.background, counts: counts), "Claude (2) /rc (1)")
-        XCTAssertEqual(Menu.label(.off, counts: counts), "Off")
-        XCTAssertEqual(Menu.label(.always, counts: counts), "Always")
-        XCTAssertEqual(Menu.label(.background, counts: nil), "Claude /rc")
+        XCTAssertEqual(Menu.label(.interactive, counts: counts), "Claude (2) ☕")
+        XCTAssertEqual(Menu.label(.background, counts: counts), "Claude (2) /rc (1) ☕")
+        XCTAssertEqual(Menu.label(.off, counts: counts), "Off 🛌")
+        XCTAssertEqual(Menu.label(.always, counts: counts), "Always ⚠️")
+        XCTAssertEqual(Menu.label(.background, counts: nil), "Claude /rc ☕")
+        XCTAssertEqual(Menu.label(.interactive, counts: nil), "Claude ☕")
     }
 
     func testTheFloorCheckboxNamesTheFloor() {
