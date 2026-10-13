@@ -30,12 +30,14 @@ enum InsomniaMenu {
     /// The rows with the count of sessions **working** right now — the ones
     /// that would actually keep the laptop from sleeping. Each row names what
     /// it holds: `Claude (2)`, and `Claude (2) /rc (1)` because that mode holds
-    /// both. `nil` counts leave the bare words.
+    /// both. `nil` counts leave the bare words, and so does a zero (Victor,
+    /// 2026-10-13: *"don't show (0) in menu labels"*): `Claude /rc (1)`.
     static func label(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> String {
         guard let counts else { return label(mode) }
+        func count(_ n: Int) -> String { n > 0 ? " (\(n))" : "" }
         switch mode {
-        case .interactive: return "\(emoji(mode)) Claude (\(counts.claude))"
-        case .background: return "\(emoji(mode)) Claude (\(counts.claude)) /rc (\(counts.rc))"
+        case .interactive: return "\(emoji(mode)) Claude\(count(counts.claude))"
+        case .background: return "\(emoji(mode)) Claude\(count(counts.claude)) /rc\(count(counts.rc))"
         case .off, .always: return label(mode)
         }
     }

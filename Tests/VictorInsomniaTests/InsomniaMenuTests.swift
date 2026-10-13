@@ -47,6 +47,9 @@ final class InsomniaMenuTests: XCTestCase {
         XCTAssertEqual(Menu.label(.always, counts: counts), "⚠️ Always")
         XCTAssertEqual(Menu.label(.background, counts: nil), "☕ Claude /rc")
         XCTAssertEqual(Menu.label(.interactive, counts: nil), "☕ Claude")
+        XCTAssertEqual(Menu.label(.interactive, counts: .init(claude: 0, rc: 4)), "☕ Claude")
+        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 0, rc: 1)), "☕ Claude /rc (1)")
+        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 2, rc: 0)), "☕ Claude (2) /rc")
     }
 
     func testTheFloorCheckboxNamesTheFloor() {

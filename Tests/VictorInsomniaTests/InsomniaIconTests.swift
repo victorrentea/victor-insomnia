@@ -33,14 +33,14 @@ final class InsomniaIconTests: XCTestCase {
     }
 
     func testMenuDigitsAreGreenAndTheRcOneRed() {
-        let row = InsomniaMenu.attributedLabel(.background, counts: .init(claude: 12, rc: 0))
-        XCTAssertEqual(row.string, "☕ Claude (12) /rc (0)")
+        let row = InsomniaMenu.attributedLabel(.background, counts: .init(claude: 12, rc: 3))
+        XCTAssertEqual(row.string, "☕ Claude (12) /rc (3)")
         let text = row.string as NSString
         let colour = { (part: String) in
             row.attribute(.foregroundColor, at: text.range(of: part).location, effectiveRange: nil) as? NSColor
         }
         XCTAssertEqual(colour("12"), InsomniaIcon.countGreen)
-        XCTAssertEqual(colour("0"), InsomniaIcon.countRed)
+        XCTAssertEqual(colour("3"), InsomniaIcon.countRed)
         XCTAssertNil(colour("Claude"))
         XCTAssertNil(colour("("))
     }
