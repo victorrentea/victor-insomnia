@@ -284,6 +284,16 @@ final class LidAwake {
     /// Whether this app is holding the Mac awake right now, as the menu bar
     /// shows it.
     var isHolding: Bool { holding }
+    /// The working sessions as of the last tick, split as the menu bar's
+    /// `claude/rc` digits show them. `nil` until the first tick.
+    private(set) var counts: ClaudeActivity.WorkingCounts? {
+        didSet {
+            guard counts != oldValue, let now = counts else { return }
+            DispatchQueue.main.async { [weak self] in self?.onCountsChanged?(now) }
+        }
+    }
+    /// Fires on the main queue whenever those counts move.
+    var onCountsChanged: ((ClaudeActivity.WorkingCounts) -> Void)?
     /// The system volume as it was before the beats raised it — `nil` whenever we
     /// have not raised it, which is also what makes the restore idempotent.
     private var volumeBeforeBeats: Float?
@@ -636,9 +646,14 @@ final class LidAwake {
     /// `interactive` deliberately asks only the process table: a phone-driven
     /// session is exactly what that mode is declining to hold the lid open for.
     private func workingNow() -> [Int32] {
+        workingNow(interactive: LidAwakeSettings.interactiveIsEnabled ? ClaudeActivity.interactiveWorkingSessions() : [],
+                   remote: LidAwakeSettings.remoteIsEnabled ? ClaudeActivity.remoteWorkingSessions() : [])
+    }
+
+    private func workingNow(interactive: [Int32], remote: [Int32]) -> [Int32] {
         var pids: [Int32] = []
-        if LidAwakeSettings.interactiveIsEnabled { pids += ClaudeActivity.interactiveWorkingSessions() }
-        if LidAwakeSettings.remoteIsEnabled { pids += ClaudeActivity.remoteWorkingSessions() }
+        if LidAwakeSettings.interactiveIsEnabled { pids += interactive }
+        if LidAwakeSettings.remoteIsEnabled { pids += remote }
         return Array(Set(pids)).sorted()
     }
 
@@ -646,7 +661,13 @@ final class LidAwake {
         ticks += 1
 
         let battery = Self.batteryPercent()
-        let working = workingNow()
+        // Both halves are read every tick, whatever the mode, because the menu
+        // bar shows both numbers (2026-10-13) — the /rc one included while
+        // `Claude` is declining to hold the lid open for it.
+        let interactive = ClaudeActivity.interactiveWorkingSessions()
+        let remote = ClaudeActivity.remoteWorkingSessions()
+        counts = ClaudeActivity.workingCounts(interactive: interactive, remote: remote)
+        let working = workingNow(interactive: interactive, remote: remote)
         // "Everything has finished and it is still awake" is a question the log
         // has to be able to answer, so the holders are named the moment the set
         // changes. Once it is a list of pids, `ps -p <pid>` finishes the story.

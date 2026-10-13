@@ -32,6 +32,20 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaIcon.cup(.red).image?.isTemplate, false)
     }
 
+    func testTheDigitsAreClaudeSlashRc() {
+        let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1)
+        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .interactive), "2/1")
+        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .background), "2/1")
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 3), mode: .always), "/3")
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 4, rc: 0), mode: .background), "4")
+    }
+
+    func testNoDigitsWhenNothingWorksOrTheModeIsOff() {
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 0), mode: .interactive), "")
+        XCTAssertEqual(InsomniaMenu.iconCounts(nil, mode: .background), "")
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 2, rc: 1), mode: .off), "")
+    }
+
     func testTheTooltipSaysWhatItIsDoing() {
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .background, holding: true),
                        "Insomnia: Claude /rc — holding the Mac awake")

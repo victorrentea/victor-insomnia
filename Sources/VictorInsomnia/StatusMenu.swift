@@ -41,6 +41,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         let holding = lid.isHolding
         statusItem.button?.image = InsomniaIcon.look(mode: mode, holding: holding).image
         statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding)
+        let digits = InsomniaMenu.iconCounts(lid.counts, mode: mode)
+        statusItem.button?.imagePosition = digits.isEmpty ? .imageOnly : .imageLeft
+        statusItem.button?.attributedTitle = NSAttributedString(string: digits, attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium),
+        ])
         for (each, item) in modeItems { item.state = InsomniaMenu.state(each, current: mode) }
         floorItem.state = LidAwakeSettings.sleepsUnderFloor ? .on : .off
     }

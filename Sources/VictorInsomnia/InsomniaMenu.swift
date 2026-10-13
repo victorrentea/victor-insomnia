@@ -40,6 +40,17 @@ enum InsomniaMenu {
         }
     }
 
+    /// The two small digits beside the menu bar icon (2026-10-13, Victor:
+    /// *"how many instances of Claude slash how many remote instances"*):
+    /// `claude/rc`, the sessions working right now, each half shown only when
+    /// it is not zero: `2`, `/1`, `2/1` — the slash marks the remote number.
+    /// Nothing at all when no session works, or when the mode is `Off` and
+    /// none of them would keep the Mac up anyway — the bed says it alone.
+    static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> String {
+        guard mode != .off, let counts else { return "" }
+        return (counts.claude > 0 ? "\(counts.claude)" : "") + (counts.rc > 0 ? "/\(counts.rc)" : "")
+    }
+
     static let floorLabel = "Sleep under \(LidAwakePolicy.batteryFloorPercent)%"
 
     /// The classic Mac checkmark on the current mode.

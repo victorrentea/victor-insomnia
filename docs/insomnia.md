@@ -13,6 +13,11 @@ describes the runtime, which moved unchanged:
   white/black for `Claude`, **orange** for `Claude /rc`, **red** for `Always`.
   The bed is never coloured. Pure in `InsomniaIcon.look(mode:holding:)`,
   unit-tested; repainted from `LidAwake.onHoldingChanged`.
+- **Digits beside the icon** (2026-10-13): the sessions working right now,
+  `claude/rc` — `2` for terminal sessions only, `/1` for remote only, `2/1`
+  for both; nothing when none works or the mode is `Off`. Counted every tick,
+  both halves whatever the mode (`LidAwake.counts`, repainted from
+  `onCountsChanged`), formatted in `InsomniaMenu.iconCounts`.
 - **The menu** is the four modes (native checkmark, working counts read as it
   opens), `Sleep under 20%`, and Quit. **Quit clears the flag**
   (`LidAwake.releaseForQuit`): a `SleepDisabled` nobody watches is a Mac that
