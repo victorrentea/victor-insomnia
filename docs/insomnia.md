@@ -17,8 +17,8 @@ describes the runtime, which moved unchanged:
   `claude/rc` — `2` for terminal sessions only, `/1` for remote only, `2/1`
   for both; nothing when none works or the mode is `Off`. Counted every tick,
   both halves whatever the mode (`LidAwake.counts`, repainted from
-  `onCountsChanged`), formatted in `InsomniaMenu.iconCounts`. Drawn green,
-  with a one-pixel black outline, centred on the cup
+  `onCountsChanged`), formatted in `InsomniaMenu.iconCounts`. Drawn lime,
+  11pt heavy under a thick black outline, raised to the top of the cup
   (`InsomniaIcon.image(digits:)`) — not as a button title beside it (it read
   as a separate menu bar item), nor as a top-right badge (tried first).
 - **The menu** is the four modes (native checkmark, working counts read as it

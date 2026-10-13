@@ -32,11 +32,11 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaIcon.cup(.red).image?.isTemplate, false)
     }
 
-    func testTheDigitsSitOnTheCupWithoutResizingIt() {
+    func testTheDigitsSitOnTheCupWithoutWideningIt() {
         let cup = InsomniaIcon.cup(.plain)
         XCTAssertEqual(cup.image(digits: "")?.isTemplate, true)
         XCTAssertEqual(cup.image(digits: "2/1")?.isTemplate, false)
-        XCTAssertEqual(cup.image(digits: "3")?.size, cup.image?.size)
+        XCTAssertEqual(cup.image(digits: "3")?.size.width, cup.image?.size.width)
     }
 
     func testTheDigitsAreClaudeSlashRc() {
