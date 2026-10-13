@@ -112,9 +112,11 @@ enum InsomniaIcon: Equatable {
         return image
     }
 
-    /// **The digits sit on the icon's top-right corner, as a badge** (2026-10-13,
-    /// Victor: *"not next to the coffee, but over it… a different colour…
-    /// a border so you can still read it"*): green — none of the cups is
+    /// **The digits sit centred on the icon** (2026-10-13, Victor: *"not next
+    /// to the coffee, but over it… a different colour… a border so you can
+    /// still read it"*, then *"3 or 3/1 or /1 should stay centred on the
+    /// coffee… bordered by one pixel, black"*; a top-right badge came first):
+    /// green — none of the cups is
     /// green, so it never melts into an orange or red one — over a black
     /// outline that keeps it legible on a light menu bar too. Picked from
     /// yellow / green / teal / white / blue rendered on all three cups, dark
@@ -123,16 +125,16 @@ enum InsomniaIcon: Equatable {
     /// they are drawn in; the image is redrawn when that changes.
     func image(digits: String) -> NSImage? {
         guard !digits.isEmpty, let base = image else { return image }
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 9.5, weight: .heavy)
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .heavy)
         let outline = NSAttributedString(string: digits, attributes: [
-            .font: font, .strokeColor: NSColor.black, .strokeWidth: 9.0, .foregroundColor: NSColor.clear,
+            .font: font, .strokeColor: NSColor.black, .strokeWidth: 11.0, .foregroundColor: NSColor.clear,
         ])
         let body = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: NSColor.systemGreen])
         let text = body.size()
-        let width = max(base.size.width, base.size.width * 0.55 + text.width + 1)
-        let height: CGFloat = 20
+        let width = max(base.size.width, text.width + 2)
+        let height = base.size.height
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
-            let spot = NSRect(x: 0, y: (height - base.size.height) / 2 - 1.5,
+            let spot = NSRect(x: (width - base.size.width) / 2, y: 0,
                               width: base.size.width, height: base.size.height)
             if base.isTemplate {
                 let dark = NSAppearance.currentDrawing().bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
@@ -140,7 +142,7 @@ enum InsomniaIcon: Equatable {
             } else {
                 base.draw(in: spot)
             }
-            let at = NSPoint(x: width - text.width - 0.5, y: height - text.height + 2)
+            let at = NSPoint(x: (width - text.width) / 2, y: (height - text.height) / 2 + 0.5)
             outline.draw(at: at)
             body.draw(at: at)
             return true
