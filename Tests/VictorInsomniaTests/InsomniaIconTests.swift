@@ -32,6 +32,14 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaIcon.cup(.red).image?.isTemplate, false)
     }
 
+    func testTheBadgeWidensTheIconOnlyWhenThereAreDigits() {
+        let cup = InsomniaIcon.cup(.plain)
+        XCTAssertEqual(cup.image(digits: "")?.isTemplate, true)
+        let plain = cup.image!.size.width
+        XCTAssertGreaterThan(cup.image(digits: "2/1")!.size.width, plain)
+        XCTAssertEqual(cup.image(digits: "2/1")?.isTemplate, false)
+    }
+
     func testTheDigitsAreClaudeSlashRc() {
         let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1)
         XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .interactive), "2/1")

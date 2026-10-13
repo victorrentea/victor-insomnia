@@ -112,6 +112,53 @@ enum InsomniaIcon: Equatable {
         return image
     }
 
+    /// **The digits sit on the icon's top-right corner, as a badge** (2026-10-13,
+    /// Victor: *"not next to the coffee, but over it… a different colour…
+    /// a border so you can still read it"*): green — none of the cups is
+    /// green, so it never melts into an orange or red one — over a black
+    /// outline that keeps it legible on a light menu bar too. Picked from
+    /// yellow / green / teal / white / blue rendered on all three cups, dark
+    /// and light. A template image can't carry a coloured badge, so the
+    /// badged plain looks paint themselves white or black from the appearance
+    /// they are drawn in; the image is redrawn when that changes.
+    func image(digits: String) -> NSImage? {
+        guard !digits.isEmpty, let base = image else { return image }
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 9.5, weight: .heavy)
+        let outline = NSAttributedString(string: digits, attributes: [
+            .font: font, .strokeColor: NSColor.black, .strokeWidth: 9.0, .foregroundColor: NSColor.clear,
+        ])
+        let body = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: NSColor.systemGreen])
+        let text = body.size()
+        let width = max(base.size.width, base.size.width * 0.55 + text.width + 1)
+        let height: CGFloat = 20
+        let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
+            let spot = NSRect(x: 0, y: (height - base.size.height) / 2 - 1.5,
+                              width: base.size.width, height: base.size.height)
+            if base.isTemplate {
+                let dark = NSAppearance.currentDrawing().bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                Self.tinted(base, dark ? .white : .black).draw(in: spot)
+            } else {
+                base.draw(in: spot)
+            }
+            let at = NSPoint(x: width - text.width - 0.5, y: height - text.height + 2)
+            outline.draw(at: at)
+            body.draw(at: at)
+            return true
+        }
+        image.isTemplate = false
+        image.accessibilityDescription = "\(base.accessibilityDescription ?? "Insomnia"), \(digits) working"
+        return image
+    }
+
+    private static func tinted(_ template: NSImage, _ color: NSColor) -> NSImage {
+        NSImage(size: template.size, flipped: false) { r in
+            template.draw(in: r)
+            color.set()
+            r.fill(using: .sourceAtop)
+            return true
+        }
+    }
+
     /// **🛏️, drawn** (2026-10-08, Victor: *"the bed should resemble this 🛏️"*).
     /// SF Symbols only has `bed.double`, a front view; the emoji is a single
     /// bed from the side — tall headboard, lower footboard, pillow tipped back
