@@ -42,18 +42,20 @@ enum InsomniaMenu {
 
     /// The same row with its counts in the icon's green (2026-10-13, Victor:
     /// *"the two in the menu name should also be displayed in green, just as
-    /// the number"*): the digits only, not the brackets.
+    /// the number"*): the digits only, not the brackets; the `/rc` count red.
     static func attributedLabel(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> NSAttributedString {
         let font = NSFont.menuFont(ofSize: 0)
         let row = NSMutableAttributedString(string: label(mode, counts: counts), attributes: [.font: font])
         let text = row.string as NSString
+        let rc = text.range(of: "/rc")
         var from = 0
         while true {
             let found = text.rangeOfCharacter(from: .decimalDigits, options: [], range: NSRange(location: from, length: text.length - from))
             if found.location == NSNotFound { break }
             var end = found.location
             while end < text.length, CharacterSet.decimalDigits.contains(UnicodeScalar(text.character(at: end)) ?? " ") { end += 1 }
-            row.addAttribute(.foregroundColor, value: InsomniaIcon.countGreen, range: NSRange(location: found.location, length: end - found.location))
+            let remote = rc.location != NSNotFound && found.location > rc.location
+            row.addAttribute(.foregroundColor, value: remote ? InsomniaIcon.countRed : InsomniaIcon.countGreen, range: NSRange(location: found.location, length: end - found.location))
             from = end
         }
         return row
@@ -145,7 +147,8 @@ enum InsomniaIcon: Equatable {
     /// dark top, the coffee, and the menu bar's black above it, clear of the
     /// cup's body — with the cup at the bottom of an icon 7pt taller than it.
     /// Placed by eye from renders of 2, 3, 4 and 2/1 at four heights.
-    /// Lime because none of the cups is green.
+    /// Lime because none of the cups is green; the `/rc` half, slash
+    /// included, in red (`countRed`).
     ///
     /// The outline is the digits drawn black 16 times around a 1.3pt circle,
     /// not a text stroke: a stroke that thick grows miter spikes off the
@@ -156,7 +159,12 @@ enum InsomniaIcon: Equatable {
         guard !digits.isEmpty, let base = image else { return image }
         let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .heavy)
         let shadow = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: NSColor.black])
-        let body = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: Self.lime])
+        let body = NSMutableAttributedString(string: digits, attributes: [.font: font, .foregroundColor: Self.lime])
+        let slash = (digits as NSString).range(of: "/")
+        if slash.location != NSNotFound {
+            body.addAttribute(.foregroundColor, value: Self.brightRed,
+                              range: NSRange(location: slash.location, length: body.length - slash.location))
+        }
         let text = body.size()
         let width = max(base.size.width, text.width + 3)
         let height = base.size.height + 7
@@ -186,6 +194,7 @@ enum InsomniaIcon: Equatable {
     }
 
     private static let lime = NSColor(srgbRed: 0.2, green: 1, blue: 0.2, alpha: 1)
+    private static let brightRed = NSColor(srgbRed: 1, green: 0.3, blue: 0.3, alpha: 1)
 
     /// The counts' green in the menu rows, the icon's convention carried over:
     /// the icon's lime on a dark menu, a darker green on a light one, where
@@ -193,6 +202,14 @@ enum InsomniaIcon: Equatable {
     static let countGreen = NSColor(name: "InsomniaCountGreen") { look in
         look.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             ? lime : NSColor(srgbRed: 0, green: 0.55, blue: 0, alpha: 1)
+    }
+
+    /// The remote count's red, icon and menu alike (2026-10-13, Victor: *"the
+    /// rc should be in red"*): green is the sessions at the keyboard, red the
+    /// ones from the phone. Darker on a light menu, like the green.
+    static let countRed = NSColor(name: "InsomniaCountRed") { look in
+        look.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? brightRed : NSColor(srgbRed: 0.8, green: 0, blue: 0, alpha: 1)
     }
 
     private static func tinted(_ template: NSImage, _ color: NSColor) -> NSImage {

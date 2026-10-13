@@ -32,15 +32,17 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaIcon.cup(.red).image?.isTemplate, false)
     }
 
-    func testOnlyTheMenuDigitsAreGreen() {
+    func testMenuDigitsAreGreenAndTheRcOneRed() {
         let row = InsomniaMenu.attributedLabel(.background, counts: .init(claude: 12, rc: 0))
         XCTAssertEqual(row.string, "☕ Claude (12) /rc (0)")
         let text = row.string as NSString
-        for (part, green) in [("12", true), ("0", true), ("Claude", false), ("(", false)] {
-            let at = text.range(of: part).location
-            let colour = row.attribute(.foregroundColor, at: at, effectiveRange: nil) as? NSColor
-            XCTAssertEqual(colour == InsomniaIcon.countGreen, green, part)
+        let colour = { (part: String) in
+            row.attribute(.foregroundColor, at: text.range(of: part).location, effectiveRange: nil) as? NSColor
         }
+        XCTAssertEqual(colour("12"), InsomniaIcon.countGreen)
+        XCTAssertEqual(colour("0"), InsomniaIcon.countRed)
+        XCTAssertNil(colour("Claude"))
+        XCTAssertNil(colour("("))
     }
 
     func testTheDigitsSitOnTheCupWithoutWideningIt() {
