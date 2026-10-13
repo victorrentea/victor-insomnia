@@ -15,7 +15,7 @@ enum InsomniaMenu {
         }
     }
 
-    /// Trails each row (2026-10-13): what the mode does to the Mac at a
+    /// Leads each row (2026-10-13): what the mode does to the Mac at a
     /// glance — sleeps, stays up for Claude, stays up no matter what.
     static func emoji(_ mode: LidAwakeMode) -> String {
         switch mode {
@@ -25,7 +25,7 @@ enum InsomniaMenu {
         }
     }
 
-    static func label(_ mode: LidAwakeMode) -> String { "\(name(mode)) \(emoji(mode))" }
+    static func label(_ mode: LidAwakeMode) -> String { "\(emoji(mode)) \(name(mode))" }
 
     /// The rows with the count of sessions **working** right now — the ones
     /// that would actually keep the laptop from sleeping. Each row names what
@@ -34,8 +34,8 @@ enum InsomniaMenu {
     static func label(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> String {
         guard let counts else { return label(mode) }
         switch mode {
-        case .interactive: return "Claude (\(counts.claude)) \(emoji(mode))"
-        case .background: return "Claude (\(counts.claude)) /rc (\(counts.rc)) \(emoji(mode))"
+        case .interactive: return "\(emoji(mode)) Claude (\(counts.claude))"
+        case .background: return "\(emoji(mode)) Claude (\(counts.claude)) /rc (\(counts.rc))"
         case .off, .always: return label(mode)
         }
     }

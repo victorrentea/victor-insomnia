@@ -17,13 +17,12 @@ final class InsomniaMenuTests: XCTestCase {
     func testTheRowsAreTheWordsAloneAndTheTickIsTheNativeOne() {
         // Victor asked for the classic Mac checkmark in this submenu
         // (2026-09-21): no marker in the text at all, the state carries it.
-        // Safe here and nowhere else in this app — the check column AppKit
-        // reserves belongs to these three rows, which have no leading emoji to
-        // be shifted.
+        // Since 2026-10-13 every row leads with its mode's emoji, so the check
+        // column shifts all of them alike.
         for mode in LidAwakeMode.allCases {
             let label = Menu.label(mode)
             XCTAssertFalse(label.contains("✅"), "\(mode) must carry no tick of its own")
-            XCTAssertTrue(label.first?.isLetter == true, "the row is the words alone")
+            XCTAssertTrue(label.hasPrefix(Menu.emoji(mode) + " "), "the row leads with its emoji")
         }
     }
 
@@ -42,12 +41,12 @@ final class InsomniaMenuTests: XCTestCase {
 
     func testTheClaudeRowsCarryTheirWorkingCountsInBrackets() {
         let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1)
-        XCTAssertEqual(Menu.label(.interactive, counts: counts), "Claude (2) ☕")
-        XCTAssertEqual(Menu.label(.background, counts: counts), "Claude (2) /rc (1) ☕")
-        XCTAssertEqual(Menu.label(.off, counts: counts), "Off 🛌")
-        XCTAssertEqual(Menu.label(.always, counts: counts), "Always ⚠️")
-        XCTAssertEqual(Menu.label(.background, counts: nil), "Claude /rc ☕")
-        XCTAssertEqual(Menu.label(.interactive, counts: nil), "Claude ☕")
+        XCTAssertEqual(Menu.label(.interactive, counts: counts), "☕ Claude (2)")
+        XCTAssertEqual(Menu.label(.background, counts: counts), "☕ Claude (2) /rc (1)")
+        XCTAssertEqual(Menu.label(.off, counts: counts), "🛌 Off")
+        XCTAssertEqual(Menu.label(.always, counts: counts), "⚠️ Always")
+        XCTAssertEqual(Menu.label(.background, counts: nil), "☕ Claude /rc")
+        XCTAssertEqual(Menu.label(.interactive, counts: nil), "☕ Claude")
     }
 
     func testTheFloorCheckboxNamesTheFloor() {
