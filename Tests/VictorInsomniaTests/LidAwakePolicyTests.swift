@@ -506,6 +506,49 @@ final class ClaudeHelperTests: XCTestCase {
             [200, 300])
     }
 
+    // MARK: - A `caffeinate` counts only while its session says `busy`
+
+    private func terminal(_ pid: Int32, status: String, changed: TimeInterval = 0) -> SessionPresence {
+        SessionPresence(pid: pid, sessionId: "s\(pid)", cwd: "/Users/v/workspace", entrypoint: "cli",
+                        status: status, statusUpdatedAt: Date().addingTimeInterval(-changed))
+    }
+
+    private func caffeinated(_ sessions: [SessionPresence]) -> [Int32] {
+        let byPid = Dictionary(uniqueKeysWithValues: sessions.map { ($0.pid, $0) })
+        return ClaudeActivity.workingSessions(
+            in: [RunningProcess(pid: 500, ppid: 1, name: "2.1.299"),
+                 RunningProcess(pid: 501, ppid: 500, name: "caffeinate")],
+            executablePath: { _ in "/Users/v/.local/share/claude/versions/2.1.299" },
+            presence: { byPid[$0] })
+    }
+
+    func testABusySessionWithACaffeinateCounts() {
+        XCTAssertEqual(caffeinated([terminal(500, status: "busy", changed: 3_600)]), [500])
+    }
+
+    /// CodexBar's usage probe, as measured on 2026-10-14: `waiting` from its
+    /// first second, a `caffeinate` held all ~17 s of its life. It put a `1`
+    /// on the icon and the Mac slept under it.
+    func testASessionWaitingForAHumanDoesNotCountEvenWithACaffeinate() {
+        XCTAssertEqual(caffeinated([terminal(500, status: "waiting", changed: 1)]), [])
+    }
+
+    func testAnEndedTurnIsHeldThroughTheGapBeforeTheNextMessage() {
+        XCTAssertEqual(caffeinated([terminal(500, status: "idle", changed: 5)]), [500])
+    }
+
+    func testAnEndedTurnLetsGoAfterTheGrace() {
+        XCTAssertEqual(caffeinated([terminal(500, status: "idle", changed: 60)]), [])
+    }
+
+    func testNoPresenceFileLeavesTheCaffeinateToDecide() {
+        XCTAssertEqual(caffeinated([]), [500])
+    }
+
+    func testAnOlderCliWithNoStatusLeavesTheCaffeinateToDecide() {
+        XCTAssertEqual(caffeinated([terminal(500, status: "")]), [500])
+    }
+
     // MARK: - Remote-control sessions, which hold no `caffeinate` at all
 
     private let claudeBinary = "/Users/v/.local/share/claude/versions/2.1.274"

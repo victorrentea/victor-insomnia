@@ -10,7 +10,7 @@ import Network
 ///   GET /test/lid-awake/mode/<m>    → off | interactive | background | always
 ///   GET /test/lid-awake/flatline    → play the 🫀 flatline, flag untouched
 ///   GET /test/sleep-chime           → play the sleep tone (blocks ≤ 3 s)
-///   GET /test/claude-activity       → which sessions count as working
+///   GET /test/claude-activity       → which sessions count as working, and which are skipped
 final class HttpServer {
     static let port: UInt16 = 55125
 
@@ -110,8 +110,18 @@ final class HttpServer {
         // with no `caffeinate`, so "working but not here" is the first thing
         // to check when the two disagree.
         let remote = ClaudeActivity.remoteWorkingSessions()
+        // Holding a `caffeinate` but not `busy` — a session waiting for an
+        // answer, or CodexBar's usage probe — with the status that excluded it.
+        let presence = ClaudeActivity.presenceByPid()
+        let notBusy = ClaudeActivity.caffeinatedSessions(
+            in: ClaudeActivity.processTable(),
+            executablePath: ClaudeActivity.executablePath(of:),
+            helperKind: ClaudeActivity.helperKind(of:))
+            .filter { !ClaudeActivity.isBusy(presence[$0], now: Date()) }
+            .map { "\"\($0):\(presence[$0]?.status ?? "")\"" }
         return "{\"working\":[\(working.map(String.init).joined(separator: ","))],"
             + "\"remote\":[\(remote.map(String.init).joined(separator: ","))],"
+            + "\"skipped_not_busy\":[\(notBusy.joined(separator: ","))],"
             + "\"skipped_helpers\":[\(helpers.map { "\"\($0)\"" }.joined(separator: ","))]}"
     }
 }

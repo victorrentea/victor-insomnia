@@ -240,6 +240,22 @@ the exact failure this is meant to prevent.
   A claimed spare is never excluded: it drops the title when it becomes a
   session (verified — a live session's `argv` is the versioned binary path and
   its flags, with no `bg-` anywhere).
+- **A `caffeinate` counts only while its session says `busy`** (2026-10-14).
+  The icon showed `1`, the lid went down, and the Mac slept ten seconds later.
+  The `1` was **CodexBar's usage probe**: every two minutes
+  `CodexBarClaudeWatchdog` launches a throwaway interactive `claude` (cwd
+  `~/Library/Application Support/CodexBar/ClaudeProbe`) that lives ~17 s, sits at
+  `status: waiting` from its first second and never reaches `busy`, and holds a
+  `caffeinate -i -t 300` the whole time. The log shows it as a pid that holds
+  for 10–20 s every two minutes, around the clock. A session *waiting for a
+  human* holds a `caffeinate` just the same. Victor's rule, the same day: *if I
+  see one or more, the laptop must not sleep* — so the number counts only
+  sessions that are actually working. The presence file
+  (`~/.claude/sessions/<pid>.json`) decides on top of the `caffeinate`:
+  `busy` counts; `waiting` does not; `idle`/`shell` count for 15 s after the
+  change (the gap before a queued message starts); no file or no `status`
+  leaves the `caffeinate` to decide, as before. `GET /test/claude-activity`
+  lists what was dropped as `skipped_not_busy` (`"pid:status"`).
 - **The holders are named in the log.** "Everything has finished and the Mac is
   still awake" cannot be answered by a boolean, so the moment the set of working
   pids changes the log says who: `held open by 1 working Claude session(s):
@@ -350,7 +366,7 @@ not existence.
   of the file is read — these transcripts reach 20 MB and this runs every ten
   seconds.
 
-`GET /test/claude-activity` now answers `{working, remote, skipped_helpers}`,
+`GET /test/claude-activity` now answers `{working, remote, skipped_not_busy, skipped_helpers}`,
 with `remote` the pids counted through this half — the first thing to look at
 when "it is working but the Mac slept" comes back.
 

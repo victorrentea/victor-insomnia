@@ -24,11 +24,10 @@ struct RunningProcess: Equatable {
 /// remote session sat at `idle` with a `statusUpdatedAt` **twelve seconds
 /// after** its last transcript line, 14 hours earlier.
 ///
-/// It is not used *yet* — the transcript signal below was already shipped and
-/// proven on the lid — but it is the more responsive of the two, and cheaper: a
-/// state change is written the moment it happens, where the transcript has to
-/// be read backwards and given a grace period. `sessionId` + `cwd` are what
-/// locate the transcript.
+/// It leads for remote sessions and, since 2026-10-14, filters terminal ones
+/// too (`isBusy`): a state change is written the moment it happens, where the
+/// transcript has to be read backwards and given a grace period. `sessionId` +
+/// `cwd` are what locate the transcript.
 struct SessionPresence: Equatable {
     let pid: Int32
     let sessionId: String
@@ -102,9 +101,16 @@ enum ClaudeActivity {
     /// promise as one that must stay up for the terminal, and Victor wanted to
     /// be able to give one of them away without the other.
     static func interactiveWorkingSessions() -> [Int32] {
-        workingSessions(in: processTable(),
-                        executablePath: executablePath(of:),
-                        helperKind: helperKind(of:))
+        let presence = presenceByPid()
+        return workingSessions(in: processTable(),
+                               executablePath: executablePath(of:),
+                               helperKind: helperKind(of:),
+                               presence: { presence[$0] },
+                               now: Date())
+    }
+
+    static func presenceByPid() -> [Int32: SessionPresence] {
+        Dictionary(sessionPresence().map { ($0.pid, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     /// The decision, separated from the syscalls so it can be tested against a
@@ -124,6 +130,18 @@ enum ClaudeActivity {
     static func workingSessions(
         in procs: [RunningProcess],
         executablePath: (Int32) -> String?,
+        helperKind: (Int32) -> String? = { _ in nil },
+        presence: (Int32) -> SessionPresence? = { _ in nil },
+        now: Date = Date()
+    ) -> [Int32] {
+        caffeinatedSessions(in: procs, executablePath: executablePath, helperKind: helperKind)
+            .filter { isBusy(presence($0), now: now) }
+    }
+
+    /// Every real session holding a `caffeinate`, before its status is asked.
+    static func caffeinatedSessions(
+        in procs: [RunningProcess],
+        executablePath: (Int32) -> String?,
         helperKind: (Int32) -> String? = { _ in nil }
     ) -> [Int32] {
         let parents = Set(procs.filter { $0.name == "caffeinate" }.map(\.ppid))
@@ -132,6 +150,39 @@ enum ClaudeActivity {
             // A daemon helper is the same binary as a session and is not one.
             return helperKind(pid) == nil
         }.sorted()
+    }
+
+    /// **A `caffeinate` is not enough on its own: the session must also say
+    /// `busy`** (2026-10-14). The menu bar showed `1`, Victor shut the lid, and
+    /// the Mac slept ten seconds later — the `1` was CodexBar's usage probe,
+    /// which launches a throwaway interactive `claude` every two minutes
+    /// (`CodexBarClaudeWatchdog`, cwd `…/CodexBar/ClaudeProbe`). Measured: it
+    /// lives ~17 s, sits at `status: waiting` the whole time, never `busy`, and
+    /// holds a `caffeinate -i -t 300` from its second second until it exits.
+    /// So a session **waiting for a human** holds a `caffeinate` too, and
+    /// counting it put a number on the icon that was gone before the lid had
+    /// finished closing. Victor's rule, the same day: *"if I see one or more,
+    /// that should stop the laptop from shutting down"* — so a session that is
+    /// only waiting for an answer does not get a number.
+    ///
+    /// - `busy` — working.
+    /// - `waiting` — a prompt or a dialog nobody has answered: not working.
+    /// - `idle` / `shell` — the turn ended; held for `endTurnGrace` after the
+    ///   change, the same gap the remote half covers between a turn ending and
+    ///   the next queued message starting. Never long enough to hold the probe:
+    ///   it leaves `idle` for `waiting` within a second, before its
+    ///   `caffeinate` exists.
+    /// - no presence file, or no `status` in it — an older CLI, or the second
+    ///   before the file is written: the `caffeinate` alone decides, as before.
+    static func isBusy(_ session: SessionPresence?, now: Date) -> Bool {
+        guard let session, !session.status.isEmpty else { return true }
+        switch session.status {
+        case workingStatus: return true
+        case waitingStatus: return false
+        default:
+            guard let changed = session.statusUpdatedAt else { return false }
+            return now.timeIntervalSince(changed) <= endTurnGrace
+        }
     }
 
     /// Which of Claude Code's own background helpers this pid is, or `nil` for
@@ -467,6 +518,9 @@ enum ClaudeActivity {
 
     /// The one `status` value that means a turn is running.
     static let workingStatus = "busy"
+
+    /// The `status` of a session stopped on a question for a human.
+    static let waitingStatus = "waiting"
 
     /// How long a session that says it is mid-tool-call is believed. This is
     /// what carries a long build across the five-minute mark; the cap exists
