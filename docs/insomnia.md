@@ -31,9 +31,19 @@ describes the runtime, which moved unchanged:
   internet gate has let go, the sessions are parked, not working, so the icon
   drops its digits (`iconCounts(stalled:)`, from `LidAwake.offlineStall`,
   repainted on `onStalledChanged`), the tooltip says `no internet, Claude is
-  parked`, and a disabled row tops the menu: `📵 No internet for N min —
-  Claude is parked, the Mac may sleep`. The menu rows keep their counts.
-- **The menu** is the four modes (native checkmark, working counts read as it
+  parked`, and a disabled row tops the menu: `📵 Offline N min` (the rest of
+  the sentence in its tooltip — the widest row sets the menu's width). The menu
+  rows keep their counts.
+- **The menu is narrow since 2026-10-14** (Victor: *"make insomnia menu less
+  wide, the same way you did for fx menu"*): no `NSMenuItem.state` and no
+  `keyEquivalent`. Each opened a column of its own for the whole menu — the
+  check gutter on the left, ~47 pt for ⌘Q on the right. Both are now one
+  column drawn inside the titles, right-aligned on a single tab stop measured
+  from the longest title (`InsomniaMenu.columned`/`tabStop`): ✓ on the current
+  mode and on `🪫 Sleep under 20%`, `⌘Q` on Quit, claimed in
+  `menuHasKeyEquivalent` while the menu is open. `swift test --filter
+  InsomniaMenuTests` leaves `insomnia-menu-{light,dark}.png` in `$TMPDIR`.
+- **The menu** is the four modes (✓ in the right column, working counts read as it
   opens — `☕ 7×Claude`, `☕ 7×Claude + 1×/rc`, a zero dropping its `N×` but
   not the word: `☕ 7×Claude + /rc`, since 2026-10-14; digits green, the `/rc`
   one red), `Sleep under 20%`, and Quit. **Quit clears the flag**
@@ -104,12 +114,10 @@ from the phone is exactly what it is declining to stay awake for.
 That would normally throw away the rule below about not hiding this state, so
 **the parent row carries the current mode in its own title** (`😴 Claude
 insomnia — background too`): the menu still answers *what is it doing* at a
-glance, and only *changing* it costs a hover. **The three rows use the classic
-Mac checkmark** — `NSMenuItem.state`, Victor's call — which the rule in the next
-paragraph forbids everywhere else in this app and which is free exactly here:
-the check column AppKit reserves belongs to those three rows alone, and they
-carry no leading emoji to be shifted. The rows are the words alone, with no
-marker of their own in the text.
+glance, and only *changing* it costs a hover. *(History: the rows used the
+classic Mac checkmark, `NSMenuItem.state`, from 2026-09-21 until 2026-10-14,
+when its gutter was the width Victor asked to lose — see "The menu is narrow"
+above.)*
 A Mac that had the old single switch on lands in `background`, which is what it
 was already doing by then (`LidAwakeSettings.mode(stored:legacyEnabled:)`,
 unit-tested) — nobody's lid guard changes underneath them on an update.
@@ -957,6 +965,12 @@ the row and lets the closed lid sleep the Mac the ordinary way.
 - 20 exactly still runs — "sub 20%" means below.
 - **Optional since 2026-10-07**: the `Sleep under 20%` checkbox in the submenu.
 - **It ends in the flatline since 2026-10-07**: Bassos, then 🫀, then the sleep.
+- **Silent with the lid open since 2026-10-14** (Victor: *"the notification on
+  screen is enough"*): no Bassos, no flatline, the overlay alone, and the
+  disarm is immediate (`LidAwakePolicy.floorGoodbye`). The tone is only moved,
+  not dropped: with the row disarmed nothing holds the lid, so the next lid
+  close on battery plays `SleepChime` — the flatline's long tone without its two
+  beats — *"to remind me nothing survived"*. Lid shut: unchanged, Bassos + 🫀.
 - **It is captioned since 2026-10-13** (`FloorOverlay`): heard at 19% with the
   lid open, the flatline did not say *why*. A red-rimmed panel at the top of the
   screen says "🪫 Battery N% — Insomnia stood down" while the sound plays; a

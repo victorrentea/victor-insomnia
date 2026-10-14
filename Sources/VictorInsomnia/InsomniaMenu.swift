@@ -83,10 +83,14 @@ enum InsomniaMenu {
     /// The disabled row on top of the menu while the internet gate has let
     /// go (2026-10-14, on a flight: a 🛏 under seven working sessions read as
     /// a contradiction). `nil` while there is no outage to explain.
+    /// Short, because the widest row sets the width of the whole menu
+    /// (2026-10-14); the rest of the sentence is `offlineTooltip`.
     static func offlineNote(stalledFor: TimeInterval?) -> String? {
         guard let stalledFor else { return nil }
-        return "📵 No internet for \(Int(stalledFor / 60)) min — Claude is parked, the Mac may sleep"
+        return "📵 Offline \(Int(stalledFor / 60)) min"
     }
+
+    static let offlineTooltip = "No internet: the working Claude sessions are parked, not working — the Mac may sleep"
 
     /// The two small digits beside the menu bar icon (2026-10-13, Victor:
     /// *"how many instances of Claude slash how many remote instances"*):
@@ -108,11 +112,52 @@ enum InsomniaMenu {
         return (counts.claude > 0 ? "\(counts.claude)" : "") + (rc > 0 ? "/\(rc)" : "")
     }
 
-    static let floorLabel = "Sleep under \(LidAwakePolicy.batteryFloorPercent)%"
+    static let floorLabel = "🪫 Sleep under \(LidAwakePolicy.batteryFloorPercent)%"
 
-    /// The classic Mac checkmark on the current mode.
-    static func state(_ mode: LidAwakeMode, current: LidAwakeMode) -> NSControl.StateValue {
-        mode == current ? .on : .off
+    static let quitLabel = "Quit"
+    static let quitHint = "⌘Q"
+    static let checkMark = "✓"
+
+    /// Whether a row is ticked — the current mode.
+    static func isChecked(_ mode: LidAwakeMode, current: LidAwakeMode) -> Bool { mode == current }
+
+    // MARK: - The right-hand column (2026-10-14)
+    //
+    // **No `NSMenuItem.state`, no `keyEquivalent`** — the same cure as Victor
+    // Effects' ✨ menu, for the same two reasons (Victor: *"make insomnia menu
+    // less wide, the same way you did for fx menu"*). One row in `.on` makes
+    // `NSMenu` open a check gutter down the left of every row, and one native
+    // ⌘Q adds a key-equivalent column of its own (~47 pt, measured in Effects'
+    // `MenuBar.titleInsets`) to the right of every title. Both are replaced by
+    // a single column drawn inside the titles, right-aligned on one tab stop:
+    // ✓ on the current mode and on the floor switch, ⌘Q on Quit.
+
+    /// Smallest gap between the longest title and the column.
+    static let columnGap: CGFloat = 14
+
+    static func width(_ text: String) -> CGFloat {
+        (text as NSString).size(withAttributes: [.font: NSFont.menuFont(ofSize: 0)]).width
+    }
+
+    /// Where the column's right edge goes: just past the longest title.
+    static func tabStop(titles: [NSAttributedString]) -> CGFloat {
+        let longest = titles.map { $0.size().width }.max() ?? 0
+        return (longest + columnGap + max(width(checkMark), width(quitHint))).rounded(.up)
+    }
+
+    /// `title`, then a tab, then `mark` right-aligned at `tabStop`. An empty
+    /// mark still gets its tab, so every row carries the same stop.
+    static func columned(_ title: NSAttributedString, mark: String, tabStop: CGFloat) -> NSAttributedString {
+        let row = NSMutableAttributedString(attributedString: title)
+        row.append(NSAttributedString(string: "\t" + mark, attributes: [.font: NSFont.menuFont(ofSize: 0)]))
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: tabStop)]
+        row.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: row.length))
+        return row
+    }
+
+    static func plain(_ text: String) -> NSAttributedString {
+        NSAttributedString(string: text, attributes: [.font: NSFont.menuFont(ofSize: 0)])
     }
 
     /// The menu bar button's hover text: the mode, and what it is doing.

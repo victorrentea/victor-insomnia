@@ -7,6 +7,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     private let menu = NSMenu()
     private var modeItems: [LidAwakeMode: NSMenuItem] = [:]
     private var floorItem: NSMenuItem!
+    private var quitItem: NSMenuItem!
     /// `📵 No internet for N min…`, shown only while the internet gate has
     /// let go, so a 🛏 over working sessions explains itself.
     private let offlineItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -19,6 +20,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.autoenablesItems = false
         offlineItem.isEnabled = false
         offlineItem.isHidden = true
+        offlineItem.toolTip = InsomniaMenu.offlineTooltip
         menu.addItem(offlineItem)
         for mode in LidAwakeMode.allCases {
             let item = NSMenuItem(title: InsomniaMenu.label(mode),
@@ -34,9 +36,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         floorItem.target = self
         menu.addItem(floorItem)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Insomnia", action: #selector(quit), keyEquivalent: "q")
-        quit.target = self
-        menu.addItem(quit)
+        // No `keyEquivalent`: its column would widen the whole menu. ⌘Q is
+        // drawn in the title and claimed in `menuHasKeyEquivalent` instead.
+        quitItem = NSMenuItem(title: InsomniaMenu.quitLabel, action: #selector(quit), keyEquivalent: "")
+        quitItem.target = self
+        menu.addItem(quitItem)
         statusItem.menu = menu
         refresh()
     }
@@ -52,15 +56,50 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         let note = InsomniaMenu.offlineNote(stalledFor: stall)
         offlineItem.title = note ?? ""
         offlineItem.isHidden = note == nil
-        for (each, item) in modeItems { item.state = InsomniaMenu.state(each, current: mode) }
-        floorItem.state = LidAwakeSettings.sleepsUnderFloor ? .on : .off
+        layOutRows(counts: lid.counts)
+    }
+
+    /// Every row's title, with the ✓ / ⌘Q column on one tab stop measured
+    /// from the longest title (see `InsomniaMenu.columned`).
+    private func layOutRows(counts: ClaudeActivity.WorkingCounts?) {
+        let mode = LidAwakeSettings.mode
+        var titles: [(NSMenuItem, NSAttributedString, String)] = LidAwakeMode.allCases.compactMap { each in
+            guard let item = modeItems[each] else { return nil }
+            return (item, InsomniaMenu.attributedLabel(each, counts: counts),
+                    InsomniaMenu.isChecked(each, current: mode) ? InsomniaMenu.checkMark : "")
+        }
+        titles.append((floorItem, InsomniaMenu.plain(InsomniaMenu.floorLabel),
+                       LidAwakeSettings.sleepsUnderFloor ? InsomniaMenu.checkMark : ""))
+        titles.append((quitItem, InsomniaMenu.plain(InsomniaMenu.quitLabel), InsomniaMenu.quitHint))
+        var widest = titles.map(\.1)
+        if !offlineItem.isHidden { widest.append(InsomniaMenu.plain(offlineItem.title)) }
+        let stop = InsomniaMenu.tabStop(titles: widest)
+        for (item, title, mark) in titles {
+            item.attributedTitle = InsomniaMenu.columned(title, mark: mark, tabStop: stop)
+        }
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        let counts = ClaudeActivity.workingCounts()
-        for (mode, item) in modeItems { item.attributedTitle = InsomniaMenu.attributedLabel(mode, counts: counts) }
+        menuIsOpen = true
         refresh()
+        layOutRows(counts: ClaudeActivity.workingCounts())
     }
+
+    func menuDidClose(_ menu: NSMenu) { menuIsOpen = false }
+
+    /// ⌘Q while the menu is open — the only time it could ever fire (a status
+    /// item app never becomes key), and so the only time it is claimed.
+    func menuHasKeyEquivalent(_ menu: NSMenu, for event: NSEvent,
+                              target: AutoreleasingUnsafeMutablePointer<AnyObject?>,
+                              action: UnsafeMutablePointer<Selector?>) -> Bool {
+        guard menuIsOpen,
+              event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+              event.charactersIgnoringModifiers?.lowercased() == "q" else { return false }
+        target.pointee = self
+        action.pointee = #selector(quit)
+        return true
+    }
+    private var menuIsOpen = false
 
     /// The kernel has the last word: `pmset` can refuse (a missing sudoers
     /// rule), and then `LidAwake` stores `off` — `refresh` shows that, never

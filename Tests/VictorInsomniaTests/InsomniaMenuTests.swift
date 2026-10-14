@@ -1,10 +1,10 @@
 import XCTest
 @testable import VictorInsomnia
 
-/// The 😴 rows carry their own tick, because the native one (`NSMenuItem.state`)
-/// makes AppKit reserve a check column for the **whole** menu and shifts every
-/// other row's text sideways — and this menu is read by the emoji at the start
-/// of each row.
+/// The rows carry their own tick and their own ⌘Q, drawn in the title on one
+/// right-aligned tab stop (2026-10-14), because the native ones
+/// (`NSMenuItem.state`, `keyEquivalent`) each make AppKit reserve a column for
+/// the **whole** menu and widen it — Victor: *"make insomnia menu less wide"*.
 ///
 /// Worth a test for one reason: the bug it guards is invisible in code review
 /// and obvious on screen. A stray marker on an inactive row, or a missing one
@@ -14,28 +14,83 @@ final class InsomniaMenuTests: XCTestCase {
 
     typealias Menu = InsomniaMenu
 
-    func testTheRowsAreTheWordsAloneAndTheTickIsTheNativeOne() {
-        // Victor asked for the classic Mac checkmark in this submenu
-        // (2026-09-21): no marker in the text at all, the state carries it.
-        // Since 2026-10-13 every row leads with its mode's emoji, so the check
-        // column shifts all of them alike.
+    func testTheRowsLeadWithTheirEmojiAndCarryNoTickOfTheirOwn() {
         for mode in LidAwakeMode.allCases {
             let label = Menu.label(mode)
-            XCTAssertFalse(label.contains("✅"), "\(mode) must carry no tick of its own")
+            XCTAssertFalse(label.contains(Menu.checkMark), "\(mode): the tick belongs to the column, not the label")
             XCTAssertTrue(label.hasPrefix(Menu.emoji(mode) + " "), "the row leads with its emoji")
         }
     }
 
     func testOnlyTheCurrentModeIsChecked() {
         for current in LidAwakeMode.allCases {
-            XCTAssertEqual(Menu.state(current, current: current), .on)
+            XCTAssertTrue(Menu.isChecked(current, current: current))
             for other in LidAwakeMode.allCases where other != current {
-                XCTAssertEqual(Menu.state(other, current: current), .off)
+                XCTAssertFalse(Menu.isChecked(other, current: current))
             }
         }
     }
 
+    func testTheColumnIsOneRightTabStopJustPastTheLongestTitle() {
+        let titles = [Menu.plain("☕ 12×Claude + 3×/rc"), Menu.plain(Menu.floorLabel), Menu.plain(Menu.quitLabel)]
+        let stop = Menu.tabStop(titles: titles)
+        let longest = titles.map { $0.size().width }.max()!
+        XCTAssertGreaterThan(stop, longest + Menu.columnGap)
+        XCTAssertLessThan(stop, longest + Menu.columnGap + 30, "no more than the column itself past the longest title")
 
+        let row = Menu.columned(Menu.plain(Menu.quitLabel), mark: Menu.quitHint, tabStop: stop)
+        XCTAssertEqual(row.string, "Quit\t⌘Q")
+        let style = row.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+        XCTAssertEqual(style?.tabStops.map(\.location), [stop])
+        XCTAssertEqual(style?.tabStops.first?.alignment, .right)
+    }
+
+    func testTheMenuIsNarrowerThanWithTheNativeColumns() {
+        // The native check gutter and ⌘Q column cost ~20 + ~47 pt; the drawn
+        // column costs one gap and one ⌘Q.
+        let titles = [Menu.plain("☕ 12×Claude + 3×/rc"), Menu.plain(Menu.floorLabel), Menu.plain(Menu.quitLabel)]
+        let longest = titles.map { $0.size().width }.max()!
+        XCTAssertLessThan(Menu.tabStop(titles: titles) - longest, 47)
+    }
+
+    /// Renders the menu rows in light and dark into `$TMPDIR/insomnia-menu-*.png`
+    /// to eyeball, and checks the ✓ is visible on both.
+    func testRendersTheMenuForEyeballing() throws {
+        let counts = ClaudeActivity.WorkingCounts(claude: 7, rc: 1)
+        var rows: [(NSAttributedString, String)] = LidAwakeMode.allCases.map {
+            (Menu.attributedLabel($0, counts: counts), $0 == .background ? Menu.checkMark : "")
+        }
+        rows.append((Menu.plain(Menu.floorLabel), Menu.checkMark))
+        rows.append((Menu.plain(Menu.quitLabel), Menu.quitHint))
+        let stop = Menu.tabStop(titles: rows.map(\.0))
+        let lines = rows.map { Menu.columned($0.0, mark: $0.1, tabStop: stop) }
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let size = NSSize(width: stop + 30, height: 22 * CGFloat(lines.count))
+            let rep = try XCTUnwrap(NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2),
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+            rep.size = size
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+            try XCTUnwrap(NSAppearance(named: name)).performAsCurrentDrawingAppearance {
+                NSColor.windowBackgroundColor.setFill()
+                NSRect(origin: .zero, size: size).fill()
+                for (i, line) in lines.enumerated() {
+                    let coloured = NSMutableAttributedString(attributedString: line)
+                    coloured.enumerateAttribute(.foregroundColor, in: NSRange(location: 0, length: coloured.length)) { value, range, _ in
+                        if value == nil { coloured.addAttribute(.foregroundColor, value: NSColor.labelColor, range: range) }
+                    }
+                    coloured.draw(in: NSRect(x: 15, y: size.height - 22 * CGFloat(i + 1) + 3, width: stop + 2, height: 20))
+                }
+            }
+            NSGraphicsContext.restoreGraphicsState()
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("insomnia-menu-\(name == .darkAqua ? "dark" : "light").png")
+            try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: url)
+            print("🖼  \(url.path)")
+        }
+    }
 
     // MARK: - Working counts (2026-10-08)
 
@@ -69,12 +124,11 @@ final class InsomniaMenuTests: XCTestCase {
 
     func testTheOfflineNoteShowsOnlyWhileStalled() {
         XCTAssertNil(Menu.offlineNote(stalledFor: nil))
-        XCTAssertEqual(Menu.offlineNote(stalledFor: 754),
-                       "📵 No internet for 12 min — Claude is parked, the Mac may sleep")
+        XCTAssertEqual(Menu.offlineNote(stalledFor: 754), "📵 Offline 12 min")
     }
 
     func testTheFloorCheckboxNamesTheFloor() {
-        XCTAssertEqual(Menu.floorLabel, "Sleep under 20%")
+        XCTAssertEqual(Menu.floorLabel, "🪫 Sleep under 20%")
     }
 
     /// The rc number is what `Claude /rc` adds on top of `Claude`, so a
