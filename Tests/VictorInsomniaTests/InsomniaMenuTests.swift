@@ -118,7 +118,7 @@ final class InsomniaMenuTests: XCTestCase {
         XCTAssertEqual(colour(at: text.range(of: "12").location), InsomniaIcon.countGreen)
         XCTAssertEqual(colour(at: text.range(of: "12").location + 1), InsomniaIcon.countGreen)
         XCTAssertEqual(colour(at: text.range(of: "3").location), InsomniaIcon.countRed)
-        XCTAssertNil(colour(at: text.range(of: "×").location))
+        XCTAssertEqual(colour(at: text.range(of: "×").location), NSColor.secondaryLabelColor)
         XCTAssertNil(colour(at: text.range(of: "/rc").location))
     }
 

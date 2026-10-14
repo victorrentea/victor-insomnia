@@ -39,12 +39,14 @@ enum InsomniaMenu {
     }
 
     /// The row in pieces, so the digits can be coloured without searching the
-    /// string for them: `.claude` / `.rc` mark the two counts.
-    private enum Part { case plain(String), claude(Int), rc(Int)
+    /// string for them: `.claude` / `.rc` mark the two counts, `.times` the
+    /// `×` after each, in gray (2026-10-14, Victor).
+    private enum Part { case plain(String), claude(Int), rc(Int), times
         var text: String {
             switch self {
             case .plain(let s): return s
             case .claude(let n), .rc(let n): return "\(n)"
+            case .times: return "×"
             }
         }
     }
@@ -52,11 +54,11 @@ enum InsomniaMenu {
     private static func labelParts(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> [Part] {
         guard let counts, mode == .interactive || mode == .background else { return [.plain(label(mode))] }
         var parts: [Part] = [.plain("\(emoji(mode)) ")]
-        if counts.claude > 0 { parts += [.claude(counts.claude), .plain("×")] }
+        if counts.claude > 0 { parts += [.claude(counts.claude), .times] }
         parts.append(.plain("Claude"))
         guard mode == .background else { return parts }
         parts.append(.plain(" + "))
-        if counts.rc > 0 { parts += [.rc(counts.rc), .plain("×")] }
+        if counts.rc > 0 { parts += [.rc(counts.rc), .times] }
         parts.append(.plain("/rc"))
         return parts
     }
@@ -64,7 +66,7 @@ enum InsomniaMenu {
     /// The same row with its counts in the icon's colours (2026-10-13,
     /// Victor: *"the two in the menu name should also be displayed in green,
     /// just as the number"*): the digits only, the local count green, the
-    /// `/rc` count red.
+    /// `/rc` count red; the `×` gray.
     static func attributedLabel(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> NSAttributedString {
         let font = NSFont.menuFont(ofSize: 0)
         let row = NSMutableAttributedString()
@@ -73,6 +75,7 @@ enum InsomniaMenu {
             switch part {
             case .claude: attributes[.foregroundColor] = InsomniaIcon.countGreen
             case .rc: attributes[.foregroundColor] = InsomniaIcon.countRed
+            case .times: attributes[.foregroundColor] = NSColor.secondaryLabelColor
             case .plain: break
             }
             row.append(NSAttributedString(string: part.text, attributes: attributes))

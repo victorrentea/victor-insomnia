@@ -46,7 +46,7 @@ describes the runtime, which moved unchanged:
 - **The menu** is the four modes (✓ in the right column, working counts read as it
   opens — `☕ 7×Claude`, `☕ 7×Claude + 1×/rc`, a zero dropping its `N×` but
   not the word: `☕ 7×Claude + /rc`, since 2026-10-14; digits green, the `/rc`
-  one red), `Sleep under 20%`, and Quit. **Quit clears the flag**
+  one red, the `×` gray), `Sleep under 20%`, and Quit. **Quit clears the flag**
   (`LidAwake.releaseForQuit`): a `SleepDisabled` nobody watches is a Mac that
   never sleeps again. A `pkill` does not — the rebuild loop relaunches within a
   second and the launch re-arms from the stored mode.
