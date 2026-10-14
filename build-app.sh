@@ -7,7 +7,9 @@ cd "$DIR"
 
 APP_NAME="Victor Insomnia"
 BUNDLE_ID="ro.victorrentea.victor-insomnia"
-APP_DIR="/Applications/$APP_NAME.app"
+# APP_DIR=<path> builds somewhere else (tools/release.sh builds into dist/);
+# UNIVERSAL=1 builds arm64 + x86_64; CODESIGN_IDENTITY=- signs ad-hoc.
+APP_DIR="${APP_DIR:-/Applications/$APP_NAME.app}"
 CONTENTS="$APP_DIR/Contents"
 BUILD_CONFIG="release"
 
@@ -32,11 +34,20 @@ if [ "${SKIP_TESTS:-0}" != "1" ]; then
     rm -f "$TESTLOG"
 fi
 
-swift build -c "$BUILD_CONFIG"
+if [ "${UNIVERSAL:-0}" = "1" ]; then
+    swift build -c "$BUILD_CONFIG" --arch arm64 --arch x86_64
+    BINARY="$DIR/.build/apple/Products/Release/VictorInsomnia"
+else
+    swift build -c "$BUILD_CONFIG"
+    BINARY="$DIR/.build/arm64-apple-macosx/$BUILD_CONFIG/VictorInsomnia"
+fi
 
 rm -rf "$APP_DIR"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
-cp "$DIR/.build/arm64-apple-macosx/$BUILD_CONFIG/VictorInsomnia" "$CONTENTS/MacOS/$APP_NAME"
+cp "$BINARY" "$CONTENTS/MacOS/$APP_NAME"
+# The synthesized heartbeat + flatline (sounds/CREDITS.md): what InsomniaSounds
+# plays when ~/.victor-insomnia/sounds has none of its own.
+cp -R "$DIR/sounds" "$CONTENTS/Resources/sounds"
 
 cat > "$CONTENTS/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
