@@ -63,8 +63,8 @@ enum SleepChimePolicy {
 /// **It blocks its caller until the tone has played, on purpose.** It used to
 /// run on `NSWorkspace.willSleepNotification`, which turned out to arrive after
 /// coreaudiod stops starting output (2026-09-23, docs/lid-awake.md). Since
-/// 2026-10-02 `LidAwake.announceSleep` calls it on the lid-close edge, on
-/// battery, with `SleepDisabled` raised — and drops the flag only once this
+/// 2026-10-02 `LidAwake.sleepTone` calls it on the lid-close edge (on AC
+/// too since 2026-10-14, `docs/lid-close.puml`), with `SleepDisabled` raised — and drops the flag only once this
 /// returns, so the sleep waits for the tone. `AddonSounds.play` cannot be used
 /// for this: it hops to the main queue with `async`, which would let the
 /// caller release the sleep before the tone had started.
@@ -101,7 +101,7 @@ enum SleepChime {
     /// file can never turn closing the lid into a wait.
     static let maxBlock: TimeInterval = 3.0
 
-    /// Sound it, blocking until done. Call from `LidAwake.announceSleep` with the
+    /// Sound it, blocking until done. Call from `LidAwake.sleepTone` with the
     /// Mac held awake — never from `willSleepNotification` (see above).
     static func sound() {
         if let last = LidAwake.lastFarewellAt, Date().timeIntervalSince(last) < afterFarewellQuiet {

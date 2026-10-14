@@ -32,7 +32,7 @@ enum LidAwakePolicy {
     /// nothing at all. Only activity *with* internet keeps the Mac on.
     static let offlineGrace: TimeInterval = 300
 
-    enum Action: Equatable {
+    enum Action: String, CaseIterable, Equatable {
         /// A Claude is working, the lid is shut and we are on battery: hold the
         /// flag and sound the heartbeat.
         case beat
@@ -137,19 +137,65 @@ enum LidAwakePolicy {
         return (lidClosed && !onAC) ? .beat : .hold
     }
 
-    /// How the floor's stand-down sounds.
-    enum FloorGoodbye: Equatable {
-        /// Lid shut: three Bassos and the whole 🫀 flatline — the bag hears it.
+    // MARK: - What is heard — docs/lid-close.puml
+
+    /// The 🔊 boxes of **`docs/lid-close.puml`, the source of truth** for what
+    /// the lid and the battery floor sound like (Victor, 2026-10-14). Every
+    /// case is named in the diagram and every name there is a case here —
+    /// `LidRulesDiagramTests` fails the build on a mismatch, so a rule is
+    /// changed in the diagram first.
+    ///
+    /// The rule behind it: **the dying pulse only when the Mac is on battery,
+    /// the lid is already shut, and then the work finishes or the battery
+    /// crosses the floor**. A lid close that ends in sleep — no work, work
+    /// that just finished, a battery already low, the mode off, on AC — plays
+    /// only the flatline's long tone, *"to remind me nothing survived"*,
+    /// without freaking out the room with a dying heart.
+    enum Sound: String, CaseIterable, Equatable {
+        /// Three lub-dubs back to back: the lid came down and the Mac stays up.
+        case threeQuickBeats
+        /// One lub-dub per tick: lid shut, on battery, still working.
+        case heartbeat
+        /// The whole 🫀 flatline — two last beats, then the long tone; after
+        /// three Bassos when it is the battery floor.
         case dyingPulse
-        /// Lid open: nothing. `FloorOverlay` is on the screen in front of him,
-        /// and a dying pulse at the desk is noise (2026-10-14). The tone is
-        /// not lost, only moved: the disarm leaves nothing holding the lid, so
-        /// the next lid close on battery plays `SleepChime` — the flatline's
-        /// long tone without its beats — "to remind me nothing survived".
-        case silent
+        /// Only the flatline's long tone (`SleepChime`): "the Mac is asleep".
+        case flatTone
+        /// Nothing: the lid is open, or nothing changed.
+        case none
     }
 
-    static func floorGoodbye(lidClosed: Bool) -> FloorGoodbye {
-        lidClosed ? .dyingPulse : .silent
+    /// The lid just came down — the diagram's left branch. `action` is what
+    /// `decide` answered for this same moment (`.release` while disarmed).
+    ///
+    /// - Parameter staysUpAnyway: the Mac would stay up without our flag — an
+    ///   external display (`!AppleClamshellCausesSleep`) or a `SleepDisabled`
+    ///   somebody else raised.
+    static func soundOnLidClose(_ action: Action, staysUpAnyway: Bool) -> Sound {
+        switch action {
+        case .beat, .hold: return .threeQuickBeats
+        case .release, .farewell, .standDown: return staysUpAnyway ? .threeQuickBeats : .flatTone
+        }
+    }
+
+    /// The 10-second tick — the diagram's right branch.
+    ///
+    /// - Parameter wasBeating: the pulse was already running, so this beat is
+    ///   one lub-dub rather than the three that open a run (work started
+    ///   under a shut lid).
+    static func soundOnTick(_ action: Action, lidClosed: Bool, onAC: Bool, wasBeating: Bool) -> Sound {
+        switch action {
+        case .beat: return wasBeating ? .heartbeat : .threeQuickBeats
+        case .hold, .release: return .none
+        // Lid open at the floor: `FloorOverlay` says it, the speaker does not
+        // (2026-10-14) — a dying pulse at the desk is noise.
+        // `.farewell` is a shut lid about to sleep. On AC (no external
+        // display) the Mac is not dying, it is going to sleep: the tone alone.
+        // (`decide` never sends the floor on AC nor a farewell with the lid
+        // open; spelling them out keeps the rule true over every input.)
+        case .standDown, .farewell:
+            guard lidClosed else { return .none }
+            return onAC ? .flatTone : .dyingPulse
+        }
     }
 }

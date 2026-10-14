@@ -7,6 +7,11 @@ Claude Code session is working**. Extracted from `victor-macos-addons` on
 **Read [docs/insomnia.md](docs/insomnia.md) before touching the code** — every
 decision, measurement and dead end is there.
 
+**What the lid and the battery floor do and sound like is decided by
+[docs/lid-close.puml](docs/lid-close.puml)** — change the diagram first, then
+`LidAwakePolicy`; `LidRulesDiagramTests` fails when the two disagree.
+Re-render with `plantuml -tsvg docs/lid-close.puml`.
+
 - **Build**: `swift build && swift test`
 - **Deploy after any code change**: `git push`, `./build-app.sh`, then
   `pkill -f "Victor Insomnia"; open "/Applications/Victor Insomnia.app"`.

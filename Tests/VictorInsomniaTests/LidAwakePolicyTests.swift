@@ -812,14 +812,4 @@ final class ClaudeHelperTests: XCTestCase {
             dir: URL(fileURLWithPath: "/nope/not/here")), [])
     }
 
-    // MARK: - The floor's goodbye (2026-10-14)
-
-    func testFloorAtTheDeskIsSilent_TheOverlaySaysIt() {
-        // Lid open: no Bassos, no flatline — the screen is in front of him.
-        XCTAssertEqual(LidAwakePolicy.floorGoodbye(lidClosed: false), .silent)
-    }
-
-    func testFloorInTheBagPlaysTheDyingPulse() {
-        XCTAssertEqual(LidAwakePolicy.floorGoodbye(lidClosed: true), .dyingPulse)
-    }
 }

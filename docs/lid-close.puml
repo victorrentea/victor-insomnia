@@ -1,0 +1,121 @@
+@startuml lid-close
+' THE SOURCE OF TRUTH for what Insomnia does, and what it sounds like, when the
+' lid closes and when the battery runs out (Victor, 2026-10-14).
+'
+' Bound to the code by LidRulesDiagramTests:
+'   - every **name** in an action box is a LidAwakePolicy.Action case, and back;
+'   - every 🔊 **name** is a LidAwakePolicy.Sound case, and back;
+'   - every decision's inputs are the parameters of LidAwakePolicy.decide /
+'     soundOnLidClose / soundOnTick, and each path through here is one row of
+'     LidRulesDiagramTests.paths.
+' Change a rule here first, then the policy, then the row.
+'
+' Render: plantuml -tsvg docs/lid-close.puml  (or -tpng)
+
+title Insomnia — lid close & battery floor: what happens, what is heard
+
+skinparam ActivityBackgroundColor #FDFDFD
+skinparam ActivityDiamondBackgroundColor #FFF6D5
+skinparam NoteBackgroundColor #EEF5FF
+skinparam ArrowColor #444444
+
+start
+
+switch (what happened?)
+
+' ─────────────────────────────── the lid comes down ───────────────────────────
+case ( lid closed\n(a real open→closed edge,\nnot a dark wake) )
+
+  if (armed, on battery, floor ticked,\nbattery < 20%?) then (yes)
+    :**standDown**
+    mode → Off, flag off, 🪫 overlay; <<#FFE0E0>>
+  elseif (armed and (Always, or a Claude working\nwith internet in the last 5 min)?) then (yes)
+    if (on battery?) then (yes)
+      :**beat**
+      hold the flag; <<#E0FFE0>>
+    else (no — on AC)
+      :**hold**
+      hold the flag; <<#E0FFE0>>
+    endif
+  elseif (armed, we were holding, and nothing\nelse keeps the shut lid up?) then (yes)
+    :**farewell**
+    the flag stays up for the sound; <<#FFF0D0>>
+  else (no)
+    :**release**
+    nothing was held; <<#EEEEEE>>
+  endif
+
+  if (does the Mac stay up?\n(a Claude/Always holds it, an external display,\nor SleepDisabled raised by someone else)) then (yes)
+    :🔊 **threeQuickBeats**
+    three lub-dubs: "I am staying up"; <<#C8F7C8>>
+    note right
+      on battery the 💓 heartbeat
+      then carries on every 10 s
+    end note
+  else (no — it is going to sleep)
+    :🔊 **flatTone**
+    only the flatline's long tone —
+    never the dying pulse on a lid close
+    (flag held up ≤ 3 s so the tone plays); <<#D0E4FF>>
+    :pmset sleepnow;
+  endif
+
+' ─────────────────────────── the 10-second tick ───────────────────────────────
+case ( every 10 s,\nwhile armed )
+
+  if (on battery, floor ticked,\nbattery < 20%?) then (yes)
+    :**standDown**
+    mode → Off, flag off, 🪫 overlay; <<#FFE0E0>>
+    if (lid closed?) then (yes)
+      :🔊 **dyingPulse**
+      three Bassos, then the whole 🫀 flatline; <<#FFB0B0>>
+      :the Mac sleeps;
+    else (no — open)
+      :🔊 **none**
+      the overlay says it; <<#EEEEEE>>
+    endif
+  elseif (Always, or a Claude working\nwith internet in the last 5 min?) then (yes)
+    if (lid closed and on battery?) then (yes)
+      :**beat**
+      hold the flag; <<#E0FFE0>>
+      :🔊 **heartbeat**
+      one lub-dub
+      (three quick ones on the first beat); <<#C8F7C8>>
+    else (no)
+      :**hold**
+      hold the flag; <<#E0FFE0>>
+      :🔊 **none**; <<#EEEEEE>>
+    endif
+  elseif (we were holding, and the lid is closed\nwith nothing else keeping the Mac up?) then (yes)
+    :**farewell**
+    the work finished (or the internet
+    has been gone ≥ 5 min) under the lid; <<#FFF0D0>>
+    if (on battery?) then (yes)
+      :🔊 **dyingPulse**
+      the whole 🫀 flatline:
+      two last beats, then the long tone; <<#FFB0B0>>
+    else (no — on AC, no external display)
+      :🔊 **flatTone**
+      only the long tone; <<#D0E4FF>>
+    endif
+    :flag off, pmset sleepnow;
+  else (no)
+    :**release**
+    flag off — the Mac may sleep,
+    the mode stays armed; <<#EEEEEE>>
+    :🔊 **none**; <<#EEEEEE>>
+  endif
+
+endswitch
+
+stop
+
+legend right
+  The dying pulse is reserved for one thing: the Mac is **on battery**,
+  the lid is **already closed**, and then the work finishes or the
+  battery crosses the floor. Closing the lid never plays it — a lid close
+  that ends in sleep plays only the **flat tone**, whatever the reason
+  (no work, work just finished, battery already low, mode Off, on AC).
+endlegend
+
+@enduml

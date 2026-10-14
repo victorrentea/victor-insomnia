@@ -952,6 +952,45 @@ battery: ~4.5 s). The log says which won: `sleep tone done in N s` followed by
 `pmset sleepnow`, against `pmset -g log`'s `Entering Sleep state` timestamp.
 If the sleep wins, the fallback is the full design above.
 
+## The diagram is the source of truth (2026-10-14)
+
+*"What I would like to hear every time I close the lid … You shouldn't freak
+out people with a dying sound except when the laptop is on battery, with the
+lid closed, and somehow finishes the tasks or goes below the battery
+threshold."* The lid-close and battery-floor rules now live in
+**[`docs/lid-close.puml`](lid-close.puml)** ([rendered](lid-close.svg)), an
+activity diagram with two branches — *lid closed* and *every 10 s* — and the
+code follows it:
+
+- `LidAwakePolicy.decide` — what happens to the flag (`beat`, `hold`,
+  `release`, `farewell`, `standDown`): unchanged;
+- `LidAwakePolicy.soundOnLidClose` / `soundOnTick` — what is heard
+  (`threeQuickBeats`, `heartbeat`, `dyingPulse`, `flatTone`, `none`): new;
+- `LidAwake.lidClosed` → `answerLidClose` and `tick` are the only two callers.
+- `LidRulesDiagramTests` reads the `.puml`: the bold names in its boxes must be
+  exactly the two enums' cases, and every path is one table row. A rule
+  changes in the diagram first.
+
+What changed in behaviour:
+
+| | before | now |
+|---|---|---|
+| lid closes just as the last Claude finished (we were holding) | 🫀 dying pulse | flat tone |
+| lid closes with the battery already under the floor, armed | Bassos + dying pulse | flat tone (overlay, mode → Off) |
+| lid closes on AC, no external display, the Mac sleeps | silence | flat tone |
+| lid shut on AC (no display), the work finishes | 🫀 dying pulse | flat tone |
+| lid shut on battery, the work finishes / offline 5 min / floor crossed | dying pulse | dying pulse |
+
+**The flat tone still races the sleep when nothing was holding the lid.**
+Today's log, closes on battery with nothing held: `sleep tone done in 3.0 s`
+once, then `17.2 s` and `17.3 s` — coreaudiod's 15 s refusal to start output,
+the signature from "The door never opened". Raising `SleepDisabled` *after*
+the close vetoes the sleep (the `pmset sleepnow` that follows is what sleeps
+the Mac), but the audio side has already had its sleep notice. Closes where we
+were already holding (`farewell`, `standDown` while working) are not affected.
+The fix is the design rejected on 2026-09-23 — keep the flag up while the lid
+is open and own the sleep — which needs a watchdog; not shipped unattended.
+
 ## The 20% floor
 
 With `SleepDisabled` set, the normal low-battery sleep never fires, so a
