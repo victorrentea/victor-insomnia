@@ -76,6 +76,22 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .background, holding: true),
                        "Insomnia: Claude /rc — holding the Mac awake")
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: false),
-                       "Insomnia: Claude — the Mac may sleep")
+                       "Insomnia: Claude — no Claude working — the Mac may sleep")
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .off, holding: false),
+                       "Insomnia: Off — the Mac may sleep")
+    }
+
+    /// 2026-10-14, Victor: hovering a `2/1` should say what the 2 and the 1 are.
+    func testTheTooltipExplainsTheDigits() {
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .background, holding: true, counts: .init(claude: 2, rc: 1)),
+                       "Insomnia: Claude /rc — holding the Mac awake for:\n"
+                       + "• 2 Claude sessions working in a terminal\n"
+                       + "• 1 remote-control (/rc) Claude session working")
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: true, counts: .init(claude: 1, rc: 3)),
+                       "Insomnia: Claude — holding the Mac awake for:\n"
+                       + "• 1 Claude session working in a terminal")
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .always, holding: true, counts: .init(claude: 0, rc: 1)),
+                       "Insomnia: Always — holding the Mac awake no matter what\n"
+                       + "• 1 remote-control (/rc) Claude session working")
     }
 }

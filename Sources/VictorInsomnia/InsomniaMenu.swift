@@ -163,11 +163,35 @@ enum InsomniaMenu {
         NSAttributedString(string: text, attributes: [.font: NSFont.menuFont(ofSize: 0)])
     }
 
-    /// The menu bar button's hover text: the mode, and what it is doing.
-    static func tooltip(mode: LidAwakeMode, holding: Bool, stalled: Bool = false) -> String {
-        let doing = holding ? "holding the Mac awake"
-            : stalled ? "no internet, Claude is parked — the Mac may sleep" : "the Mac may sleep"
-        return "Insomnia: \(name(mode)) — \(doing)"
+    /// The menu bar button's hover text: the mode, what it is doing, and —
+    /// one line each — what the digits beside the icon count (2026-10-14,
+    /// Victor: the bare *"holding the Mac awake"* left `2/1` unexplained).
+    /// The lines follow `iconCounts`, so a digit the icon hides is not
+    /// explained either.
+    static func tooltip(mode: LidAwakeMode, holding: Bool, stalled: Bool = false,
+                        counts: ClaudeActivity.WorkingCounts? = nil) -> String {
+        guard holding else {
+            let why = stalled ? "no internet, Claude is parked — "
+                : mode.holdsInteractive && !mode.holdsRegardless ? "no Claude working — " : ""
+            return "Insomnia: \(name(mode)) — \(why)the Mac may sleep"
+        }
+        let lines = countLines(counts, mode: mode)
+        let doing = mode.holdsRegardless ? "holding the Mac awake no matter what"
+            : lines.isEmpty ? "holding the Mac awake" : "holding the Mac awake for:"
+        return (["Insomnia: \(name(mode)) — \(doing)"] + lines).joined(separator: "\n")
+    }
+
+    /// The icon's `2/1` in words, one bullet per half shown.
+    private static func countLines(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> [String] {
+        guard let counts, mode.holdsInteractive else { return [] }
+        var lines: [String] = []
+        if counts.claude > 0 { lines.append("• \(sessions(counts.claude)) working in a terminal") }
+        if mode.holdsRemote, counts.rc > 0 { lines.append("• \(sessions(counts.rc, remote: true)) working") }
+        return lines
+    }
+
+    private static func sessions(_ n: Int, remote: Bool = false) -> String {
+        "\(n) \(remote ? "remote-control (/rc) " : "")Claude session\(n == 1 ? "" : "s")"
     }
 }
 

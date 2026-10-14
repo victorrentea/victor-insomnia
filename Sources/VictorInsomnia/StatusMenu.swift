@@ -52,7 +52,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         let stall = mode.holdsRegardless ? nil : lid.offlineStall
         let digits = InsomniaMenu.iconCounts(lid.counts, mode: mode, stalled: stall != nil)
         statusItem.button?.image = InsomniaIcon.look(mode: mode, holding: holding).image(digits: digits)
-        statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding, stalled: stall != nil)
+        statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding, stalled: stall != nil,
+                                                            counts: lid.counts)
         let note = InsomniaMenu.offlineNote(stalledFor: stall)
         offlineItem.title = note ?? ""
         offlineItem.isHidden = note == nil
