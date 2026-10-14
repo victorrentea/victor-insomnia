@@ -1052,3 +1052,29 @@ the row and lets the closed lid sleep the Mac the ordinary way.
 - **A dead app.** The floor is enforced by this process. If Victor Insomnia is not
   running, nothing stands the flag down (macOS's own emergency sleep at ~2-3%
   still fires, so nothing is bricked).
+
+## Install and release (2026-10-14)
+
+- **`install.sh`** (`curl -fsSL …/install.sh | bash`): latest GitHub release
+  (`Victor-Insomnia.zip`, universal, ad-hoc signed) → `/Applications`, the
+  sudoers rule (sudo in a terminal; the macOS password dialog via
+  `osascript … with administrator privileges` when there is none — an agent
+  installing it; skipped when the rule already works), a LaunchAgent running
+  `open -a`, `/ping`. `--mode <m>` is written to the app's defaults
+  (`LidAwake.mode`) **before** the first launch, so the app arms itself: the
+  `/mode` route answers only after the arm, which on a just-booted Mac
+  outlasted any curl timeout (clean-VM run). `--uninstall` removes the rule
+  and clears `disablesleep`. `VICTOR_INSOMNIA_ZIP_URL` points it at an
+  unreleased zip.
+- **`tools/release.sh [tag]`**: `UNIVERSAL=1 CODESIGN_IDENTITY=- APP_DIR=dist/…`
+  `./build-app.sh`, zip, `gh release create`.
+- **Sounds** ship in the app (`sounds/`, synthesized, CC0); a user folder
+  `~/.victor-insomnia/sounds/` still wins.
+- **HTTP starts before the arm** (`main.swift`), so `/ping` answers while a slow
+  first `sudo pmset` is still running.
+- Verified on clean Tart VMs (`fx-lab`, Sequoia base): the installer alone,
+  the password path with sudo made to require one (the rule installed through
+  the dialog's command, then `sudo -n pmset -a disablesleep 0|1` passwordless
+  while plain `sudo -n true` was refused), and three agent installs from a
+  one-sentence request.
+

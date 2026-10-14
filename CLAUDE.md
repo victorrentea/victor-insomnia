@@ -19,7 +19,10 @@ Re-render with `plantuml -tsvg docs/lid-close.puml`.
 - **Test hooks**: `127.0.0.1:55125` (`/test/lid-awake/state`, `/mode/<m>`, …),
   listed in `HttpServer.swift`.
 - **Log**: `/tmp/victor-insomnia.log`.
-- **Public repo**: no personal paths, no client names. The sound files stay out
-  (`~/.victor-insomnia/sounds/`).
+- **Public repo**: no personal paths, no client names. Only our own sounds are
+  committed (`sounds/`, synthesized); private recordings go in
+  `~/.victor-insomnia/sounds/`, which wins over them.
+- **Users install with `install.sh`, releases come from `tools/release.sh`** —
+  docs/insomnia.md, "Install and release".
 - Talks to Victor Addons (55123) for one thing only, `/chrome/audible`, and
   works without it.
