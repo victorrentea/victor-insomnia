@@ -131,7 +131,7 @@ if [ "$SUDOERS_STEP" = 1 ]; then
     if [ -e "$SUDOERS" ] && sudo -n /usr/bin/pmset -a disablesleep 0 2>/dev/null; then
         say "sudoers rule already in place ($SUDOERS)"
     else
-        if sudo -n true 2>/dev/null; then say "Installing the sudoers rule"
+        if sudo -n true 2>/dev/null; then say "Installing the sudoers rule (sudo needs no password on this Mac — none was asked)"
         else say "Installing the sudoers rule — macOS will ask for your password once"; fi
         echo "$RULE" > "$WORK/rule"
         /usr/sbin/visudo -c -q -f "$WORK/rule" >/dev/null 2>&1 || die "The sudoers rule did not validate."

@@ -42,7 +42,9 @@ and arm it for my Claude sessions"*. It should run the one-liner with
 `--mode interactive`, wait while you type your password into the macOS dialog
 (the one thing it cannot do for you), then confirm with
 `curl -s 127.0.0.1:55125/test/lid-awake/state` — `"enabled":true` and the mode
-it set. Nothing else needs configuring: the heartbeat and flatline sounds are
+it set. To prove it sees Claude Code: while a session is working,
+`curl -s 127.0.0.1:55125/test/claude-activity` lists it, and `state` shows its
+pid under `"working"` (closing the lid is the only test it cannot run for you). Nothing else needs configuring: the heartbeat and flatline sounds are
 inside the app (`sounds/`, synthesized for it).
 
 ## Why it needs a sudoers rule
