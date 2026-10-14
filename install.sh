@@ -160,8 +160,20 @@ PLIST
     say "Login item registered"
 fi
 
-say "Starting $APP_NAME"
-open -a "$APP"
+# The login item's RunAtLoad launches it already; a second `open` while that
+# launch is still in flight makes the app relaunch itself (a reopen = restart,
+# by design). So give the login item up to 10 s, and open only if it did not.
+STARTED=0
+if [ "$LOGIN_ITEM" = 1 ]; then
+    for _ in $(seq 1 20); do
+        pgrep -f "$APP_NAME.app/Contents/MacOS" >/dev/null 2>&1 && { STARTED=1; break; }
+        sleep 0.5
+    done
+fi
+if [ "$STARTED" = 0 ]; then
+    say "Starting $APP_NAME"
+    open -a "$APP"
+fi
 UP=0
 for _ in $(seq 1 30); do
     curl -fs -m 1 "http://127.0.0.1:$PORT/ping" >/dev/null 2>&1 && { UP=1; break; }
