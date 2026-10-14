@@ -29,38 +29,63 @@ enum InsomniaMenu {
 
     /// The rows with the count of sessions **working** right now — the ones
     /// that would actually keep the laptop from sleeping. Each row names what
-    /// it holds: `Claude (2)`, and `Claude (2) /rc (1)` because that mode holds
-    /// both. `nil` counts leave the bare words, and so does a zero (Victor,
-    /// 2026-10-13: *"don't show (0) in menu labels"*): `Claude /rc (1)`.
+    /// it holds, as a multiplication (2026-10-14, Victor: *"7×Claude +
+    /// 1×/rc"*): `7×Claude`, and `7×Claude + 1×/rc` because that mode holds
+    /// both. A zero drops its `N×` but keeps the word (*"if no rc is on, skip
+    /// the 1x but still show /rc"*): `7×Claude + /rc`, `Claude + 1×/rc`.
+    /// `nil` counts leave the bare words.
     static func label(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> String {
-        guard let counts else { return label(mode) }
-        func count(_ n: Int) -> String { n > 0 ? " (\(n))" : "" }
-        switch mode {
-        case .interactive: return "\(emoji(mode)) Claude\(count(counts.claude))"
-        case .background: return "\(emoji(mode)) Claude\(count(counts.claude)) /rc\(count(counts.rc))"
-        case .off, .always: return label(mode)
+        labelParts(mode, counts: counts).map(\.text).joined()
+    }
+
+    /// The row in pieces, so the digits can be coloured without searching the
+    /// string for them: `.claude` / `.rc` mark the two counts.
+    private enum Part { case plain(String), claude(Int), rc(Int)
+        var text: String {
+            switch self {
+            case .plain(let s): return s
+            case .claude(let n), .rc(let n): return "\(n)"
+            }
         }
     }
 
-    /// The same row with its counts in the icon's green (2026-10-13, Victor:
-    /// *"the two in the menu name should also be displayed in green, just as
-    /// the number"*): the digits only, not the brackets; the `/rc` count red.
+    private static func labelParts(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> [Part] {
+        guard let counts, mode == .interactive || mode == .background else { return [.plain(label(mode))] }
+        var parts: [Part] = [.plain("\(emoji(mode)) ")]
+        if counts.claude > 0 { parts += [.claude(counts.claude), .plain("×")] }
+        parts.append(.plain("Claude"))
+        guard mode == .background else { return parts }
+        parts.append(.plain(" + "))
+        if counts.rc > 0 { parts += [.rc(counts.rc), .plain("×")] }
+        parts.append(.plain("/rc"))
+        return parts
+    }
+
+    /// The same row with its counts in the icon's colours (2026-10-13,
+    /// Victor: *"the two in the menu name should also be displayed in green,
+    /// just as the number"*): the digits only, the local count green, the
+    /// `/rc` count red.
     static func attributedLabel(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> NSAttributedString {
         let font = NSFont.menuFont(ofSize: 0)
-        let row = NSMutableAttributedString(string: label(mode, counts: counts), attributes: [.font: font])
-        let text = row.string as NSString
-        let rc = text.range(of: "/rc")
-        var from = 0
-        while true {
-            let found = text.rangeOfCharacter(from: .decimalDigits, options: [], range: NSRange(location: from, length: text.length - from))
-            if found.location == NSNotFound { break }
-            var end = found.location
-            while end < text.length, CharacterSet.decimalDigits.contains(UnicodeScalar(text.character(at: end)) ?? " ") { end += 1 }
-            let remote = rc.location != NSNotFound && found.location > rc.location
-            row.addAttribute(.foregroundColor, value: remote ? InsomniaIcon.countRed : InsomniaIcon.countGreen, range: NSRange(location: found.location, length: end - found.location))
-            from = end
+        let row = NSMutableAttributedString()
+        for part in labelParts(mode, counts: counts) {
+            var attributes: [NSAttributedString.Key: Any] = [.font: font]
+            switch part {
+            case .claude: attributes[.foregroundColor] = InsomniaIcon.countGreen
+            case .rc: attributes[.foregroundColor] = InsomniaIcon.countRed
+            case .plain: break
+            }
+            row.append(NSAttributedString(string: part.text, attributes: attributes))
         }
         return row
+    }
+
+    /// The disabled row on top of the menu while the internet gate has let
+    /// go (2026-10-14, on a flight: a 🛏 under seven working sessions read as
+    /// a contradiction). `nil` while there is no outage to explain.
+    static func offlineNote(stalledFor: TimeInterval?) -> String? {
+        guard let stalledFor else { return nil }
+        return "📵 No internet for \(Int(stalledFor / 60)) min — Claude is parked, the Mac may sleep"
     }
 
     /// The two small digits beside the menu bar icon (2026-10-13, Victor:
@@ -73,8 +98,12 @@ enum InsomniaMenu {
     /// (`holdsRemote`: `Claude /rc`, `Always`; Victor, same day: *"display
     /// the remote sessions if and only if remote control is supposed to keep
     /// the laptop alive"*) — under `Claude` they count for nothing.
-    static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> String {
-        guard mode.holdsInteractive, let counts else { return "" }
+    /// **No digits while `stalled`** (2026-10-14, on a flight: *"7 claude
+    /// instances were awake but icon said bed"*): past the internet gate's
+    /// grace the sessions are parked, not working, and the bed is right —
+    /// digits on it would say the opposite.
+    static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode, stalled: Bool = false) -> String {
+        guard mode.holdsInteractive, !stalled, let counts else { return "" }
         let rc = mode.holdsRemote ? counts.rc : 0
         return (counts.claude > 0 ? "\(counts.claude)" : "") + (rc > 0 ? "/\(rc)" : "")
     }
@@ -87,8 +116,9 @@ enum InsomniaMenu {
     }
 
     /// The menu bar button's hover text: the mode, and what it is doing.
-    static func tooltip(mode: LidAwakeMode, holding: Bool) -> String {
-        let doing = holding ? "holding the Mac awake" : "the Mac may sleep"
+    static func tooltip(mode: LidAwakeMode, holding: Bool, stalled: Bool = false) -> String {
+        let doing = holding ? "holding the Mac awake"
+            : stalled ? "no internet, Claude is parked — the Mac may sleep" : "the Mac may sleep"
         return "Insomnia: \(name(mode)) — \(doing)"
     }
 }

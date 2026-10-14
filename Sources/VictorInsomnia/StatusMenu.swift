@@ -7,6 +7,9 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     private let menu = NSMenu()
     private var modeItems: [LidAwakeMode: NSMenuItem] = [:]
     private var floorItem: NSMenuItem!
+    /// `📵 No internet for N min…`, shown only while the internet gate has
+    /// let go, so a 🛏 over working sessions explains itself.
+    private let offlineItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let lid: LidAwake
 
     init(lid: LidAwake) {
@@ -14,6 +17,9 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         super.init()
         menu.delegate = self
         menu.autoenablesItems = false
+        offlineItem.isEnabled = false
+        offlineItem.isHidden = true
+        menu.addItem(offlineItem)
         for mode in LidAwakeMode.allCases {
             let item = NSMenuItem(title: InsomniaMenu.label(mode),
                                   action: #selector(pickMode(_:)), keyEquivalent: "")
@@ -39,9 +45,13 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     func refresh() {
         let mode = LidAwakeSettings.mode
         let holding = lid.isHolding
-        let digits = InsomniaMenu.iconCounts(lid.counts, mode: mode)
+        let stall = mode.holdsRegardless ? nil : lid.offlineStall
+        let digits = InsomniaMenu.iconCounts(lid.counts, mode: mode, stalled: stall != nil)
         statusItem.button?.image = InsomniaIcon.look(mode: mode, holding: holding).image(digits: digits)
-        statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding)
+        statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding, stalled: stall != nil)
+        let note = InsomniaMenu.offlineNote(stalledFor: stall)
+        offlineItem.title = note ?? ""
+        offlineItem.isHidden = note == nil
         for (each, item) in modeItems { item.state = InsomniaMenu.state(each, current: mode) }
         floorItem.state = LidAwakeSettings.sleepsUnderFloor ? .on : .off
     }

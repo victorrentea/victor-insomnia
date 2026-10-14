@@ -99,13 +99,17 @@ final class InternetWatch {
 
         // Waking with the lid open in a new room must not be judged on the five
         // minutes of "offline" the Mac spent asleep: the clock is reset and the
-        // question asked again from scratch.
+        // question asked again. **But a Mac that went to sleep offline gets
+        // only `wakeGrace`, not the full five minutes** (2026-10-14, on a
+        // flight): every lid opening there bought five more minutes of holding
+        // for sessions parked on a network that never came — enough Wi-Fi time
+        // for a new room's network to answer, not enough to drain a plane.
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: nil
         ) { [weak self] _ in
             guard let self else { return }
             self.lock.lock()
-            self.lastOnlineAt = Date()
+            self.lastOnlineAt = Self.clockAfterWake(wentToSleepOffline: self.lastVerdict == false)
             self.lock.unlock()
             self.refresh(reason: "wake")
         }
@@ -129,6 +133,17 @@ final class InternetWatch {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
             self.wakeObserver = nil
         }
+    }
+
+    /// How long a Mac that went to sleep offline has, after waking, to find
+    /// the internet before the gate lets go again.
+    static let wakeGrace: TimeInterval = 60
+
+    /// Where the offline clock restarts on a wake: from zero after an online
+    /// sleep, `wakeGrace` short of the gate after an offline one.
+    static func clockAfterWake(wentToSleepOffline: Bool, now: Date = Date()) -> Date {
+        guard wentToSleepOffline else { return now }
+        return now.addingTimeInterval(-(LidAwakePolicy.offlineGrace - wakeGrace))
     }
 
     // MARK: - The answer

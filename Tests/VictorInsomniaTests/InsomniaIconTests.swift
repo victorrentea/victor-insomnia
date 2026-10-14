@@ -32,19 +32,6 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaIcon.cup(.red).image?.isTemplate, false)
     }
 
-    func testMenuDigitsAreGreenAndTheRcOneRed() {
-        let row = InsomniaMenu.attributedLabel(.background, counts: .init(claude: 12, rc: 3))
-        XCTAssertEqual(row.string, "☕ Claude (12) /rc (3)")
-        let text = row.string as NSString
-        let colour = { (part: String) in
-            row.attribute(.foregroundColor, at: text.range(of: part).location, effectiveRange: nil) as? NSColor
-        }
-        XCTAssertEqual(colour("12"), InsomniaIcon.countGreen)
-        XCTAssertEqual(colour("3"), InsomniaIcon.countRed)
-        XCTAssertNil(colour("Claude"))
-        XCTAssertNil(colour("("))
-    }
-
     func testTheDigitsSitOnTheCupWithoutWideningIt() {
         let cup = InsomniaIcon.cup(.plain)
         XCTAssertEqual(cup.image(digits: "")?.isTemplate, true)
@@ -66,6 +53,23 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 0), mode: .interactive), "")
         XCTAssertEqual(InsomniaMenu.iconCounts(nil, mode: .background), "")
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 2, rc: 1), mode: .off), "")
+    }
+
+    /// 2026-10-14, on a flight: a 🛏 with a 7 on it. Past the internet
+    /// gate's grace the sessions are parked, and the bed alone is the truth.
+    func testNoDigitsWhileTheInternetGateHasLetGo() {
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 7, rc: 1), mode: .background, stalled: true), "")
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 7, rc: 1), mode: .background, stalled: false), "7/1")
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .background, holding: false, stalled: true),
+                       "Insomnia: Claude /rc — no internet, Claude is parked — the Mac may sleep")
+    }
+
+    /// Every lid opening on a plane used to buy five fresh minutes of holding.
+    func testAWakeAfterAnOfflineSleepGetsOnlyAMinute() {
+        let now = Date()
+        XCTAssertEqual(InternetWatch.clockAfterWake(wentToSleepOffline: false, now: now), now)
+        let offline = InternetWatch.clockAfterWake(wentToSleepOffline: true, now: now)
+        XCTAssertEqual(LidAwakePolicy.offlineGrace - now.timeIntervalSince(offline), 60, accuracy: 0.001)
     }
 
     func testTheTooltipSaysWhatItIsDoing() {

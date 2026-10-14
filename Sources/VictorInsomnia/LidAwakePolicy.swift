@@ -136,4 +136,20 @@ enum LidAwakePolicy {
 
         return (lidClosed && !onAC) ? .beat : .hold
     }
+
+    /// How the floor's stand-down sounds.
+    enum FloorGoodbye: Equatable {
+        /// Lid shut: three Bassos and the whole 🫀 flatline — the bag hears it.
+        case dyingPulse
+        /// Lid open: nothing. `FloorOverlay` is on the screen in front of him,
+        /// and a dying pulse at the desk is noise (2026-10-14). The tone is
+        /// not lost, only moved: the disarm leaves nothing holding the lid, so
+        /// the next lid close on battery plays `SleepChime` — the flatline's
+        /// long tone without its beats — "to remind me nothing survived".
+        case silent
+    }
+
+    static func floorGoodbye(lidClosed: Bool) -> FloorGoodbye {
+        lidClosed ? .dyingPulse : .silent
+    }
 }

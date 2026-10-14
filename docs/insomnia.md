@@ -26,8 +26,17 @@ describes the runtime, which moved unchanged:
   where remote sessions keep the Mac up (`holdsRemote`)
   (`InsomniaIcon.image(digits:)`) — not as a button title beside it (it read
   as a separate menu bar item), nor as a top-right badge (tried first).
+- **Offline, the bed stands alone** (2026-10-14, on a flight: a 🛏 with a 7
+  on it — *"7 claude instances were awake but icon said bed"*). Once the
+  internet gate has let go, the sessions are parked, not working, so the icon
+  drops its digits (`iconCounts(stalled:)`, from `LidAwake.offlineStall`,
+  repainted on `onStalledChanged`), the tooltip says `no internet, Claude is
+  parked`, and a disabled row tops the menu: `📵 No internet for N min —
+  Claude is parked, the Mac may sleep`. The menu rows keep their counts.
 - **The menu** is the four modes (native checkmark, working counts read as it
-  opens), `Sleep under 20%`, and Quit. **Quit clears the flag**
+  opens — `☕ 7×Claude`, `☕ 7×Claude + 1×/rc`, a zero dropping its `N×` but
+  not the word: `☕ 7×Claude + /rc`, since 2026-10-14; digits green, the `/rc`
+  one red), `Sleep under 20%`, and Quit. **Quit clears the flag**
   (`LidAwake.releaseForQuit`): a `SleepDisabled` nobody watches is a Mac that
   never sleeps again. A `pkill` does not — the rebuild loop relaunches within a
   second and the launch re-arms from the stored mode.
@@ -432,7 +441,12 @@ with internet keeps the laptop on.**
   longer than needed.
 - **Waking resets the clock.** The lid opens in a new room and the Mac has been
   "offline" for the whole sleep; judging it on that would sleep it again
-  immediately. `didWakeNotification` restarts the five minutes and asks again.
+  immediately. `didWakeNotification` restarts the clock and asks again —
+  **the full five minutes only after an online sleep**. A Mac that went to
+  sleep offline gets `InternetWatch.wakeGrace`, 60 s
+  (`clockAfterWake`, 2026-10-14): on a flight every lid opening was buying
+  five more minutes of holding, with beats, for sessions parked on a network
+  that never came. A minute is plenty for a new room's Wi-Fi to answer.
 - **It runs only while the row is ticked.** `LidAwake` starts and stops the watch
   with its own timer, so an unticked row costs nothing — and an armed one costs
   one handshake every 30 s, less than `HotspotFallback` already pays.

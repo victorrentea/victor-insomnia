@@ -39,17 +39,38 @@ final class InsomniaMenuTests: XCTestCase {
 
     // MARK: - Working counts (2026-10-08)
 
-    func testTheClaudeRowsCarryTheirWorkingCountsInBrackets() {
-        let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1)
-        XCTAssertEqual(Menu.label(.interactive, counts: counts), "☕ Claude (2)")
-        XCTAssertEqual(Menu.label(.background, counts: counts), "☕ Claude (2) /rc (1)")
+    func testTheClaudeRowsCarryTheirWorkingCountsAsMultiplications() {
+        // Victor, 2026-10-14: "7×Claude + 1×/rc"; a zero drops its N× but
+        // keeps the word.
+        let counts = ClaudeActivity.WorkingCounts(claude: 7, rc: 1)
+        XCTAssertEqual(Menu.label(.interactive, counts: counts), "☕ 7×Claude")
+        XCTAssertEqual(Menu.label(.background, counts: counts), "☕ 7×Claude + 1×/rc")
         XCTAssertEqual(Menu.label(.off, counts: counts), "🛌 Off")
         XCTAssertEqual(Menu.label(.always, counts: counts), "⚠️ Always")
         XCTAssertEqual(Menu.label(.background, counts: nil), "☕ Claude /rc")
         XCTAssertEqual(Menu.label(.interactive, counts: nil), "☕ Claude")
         XCTAssertEqual(Menu.label(.interactive, counts: .init(claude: 0, rc: 4)), "☕ Claude")
-        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 0, rc: 1)), "☕ Claude /rc (1)")
-        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 2, rc: 0)), "☕ Claude (2) /rc")
+        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 0, rc: 1)), "☕ Claude + 1×/rc")
+        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 7, rc: 0)), "☕ 7×Claude + /rc")
+        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 0, rc: 0)), "☕ Claude + /rc")
+    }
+
+    func testOnlyTheDigitsAreColouredGreenLocalRedRemote() {
+        let row = Menu.attributedLabel(.background, counts: .init(claude: 12, rc: 3))
+        XCTAssertEqual(row.string, "☕ 12×Claude + 3×/rc")
+        let text = row.string as NSString
+        func colour(at i: Int) -> NSColor? { row.attribute(.foregroundColor, at: i, effectiveRange: nil) as? NSColor }
+        XCTAssertEqual(colour(at: text.range(of: "12").location), InsomniaIcon.countGreen)
+        XCTAssertEqual(colour(at: text.range(of: "12").location + 1), InsomniaIcon.countGreen)
+        XCTAssertEqual(colour(at: text.range(of: "3").location), InsomniaIcon.countRed)
+        XCTAssertNil(colour(at: text.range(of: "×").location))
+        XCTAssertNil(colour(at: text.range(of: "/rc").location))
+    }
+
+    func testTheOfflineNoteShowsOnlyWhileStalled() {
+        XCTAssertNil(Menu.offlineNote(stalledFor: nil))
+        XCTAssertEqual(Menu.offlineNote(stalledFor: 754),
+                       "📵 No internet for 12 min — Claude is parked, the Mac may sleep")
     }
 
     func testTheFloorCheckboxNamesTheFloor() {

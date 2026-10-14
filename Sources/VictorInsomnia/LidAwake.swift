@@ -294,6 +294,13 @@ final class LidAwake {
     }
     /// Fires on the main queue whenever those counts move.
     var onCountsChanged: ((ClaudeActivity.WorkingCounts) -> Void)?
+    /// How long the internet has been gone, while the internet gate has let
+    /// go — `nil` otherwise. The menu bar drops its digits on it: the sessions
+    /// are parked, not working.
+    var offlineStall: TimeInterval? { stalled ? net.offlineFor() : nil }
+    /// Fires on the main queue whenever the internet gate lets go or takes
+    /// hold again.
+    var onStalledChanged: ((Bool) -> Void)?
     /// The system volume as it was before the beats raised it — `nil` whenever we
     /// have not raised it, which is also what makes the restore idempotent.
     private var volumeBeforeBeats: Float?
@@ -695,6 +702,7 @@ final class LidAwake {
                 insomniaInfo("LidAwake: internet is back — watching for working Claude sessions again")
             }
             stalled = nowStalled
+            DispatchQueue.main.async { [weak self] in self?.onStalledChanged?(nowStalled) }
         }
 
         let action = LidAwakePolicy.decide(
@@ -754,7 +762,21 @@ final class LidAwake {
             // A tick (or a lid notification) landing inside the six seconds
             // below sees the same battery and would start a second goodbye.
             guard !farewellInFlight else { return }
+            // Lid open: the overlay says it, the speaker stays quiet, and the
+            // disarm is immediate — there is no sound to wait for. The flat
+            // tone comes later, from `announceSleep`, when the lid comes down.
             farewellInFlight = true
+            if LidAwakePolicy.floorGoodbye(lidClosed: Self.isLidClosed()) == .silent {
+                insomniaInfo("LidAwake: battery \(pct)% below floor, lid open — overlay only; the flat tone waits for the lid")
+                DispatchQueue.main.async { [weak self] in
+                    FloorOverlay.show(battery: pct)
+                    guard let self else { return }
+                    self.setEnabled(false, announce: false, source: .batteryFloor)
+                    self.onAutoDisabled?(pct)
+                    self.queue.async { self.farewellInFlight = false }
+                }
+                return
+            }
             insomniaInfo("LidAwake: battery \(pct)% below floor — three Bassos and the flatline, then the lid sleeps the Mac")
             // **Three Bassos, then the 🫀 flatline** (2026-10-07). The Bassos
             // alone went unheard: at 19% on the night of 2026-10-07 the Mac
@@ -763,7 +785,9 @@ final class LidAwake {
             // the flatline says, in the one sound the bag already knows,
             // "and now it is going down". The output is taken up only under a
             // shut lid, the same rule as the pulse: at the desk the goodbye
-            // goes out at whatever the slider says.
+            // goes out at whatever the slider says. (Only reached with the lid
+            // shut since 2026-10-14, but a lid opened in the last instant
+            // still must not be boosted.)
             if Self.isLidClosed() { boostForBeats(true) }
             // …and the same goodbye in words, for a screen someone is looking at.
             DispatchQueue.main.async { FloorOverlay.show(battery: pct) }
