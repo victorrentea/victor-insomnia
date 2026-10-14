@@ -14,8 +14,9 @@
 #      shows its own password dialog.
 #   4. registers a login item (LaunchAgent), starts it, checks it answers on
 #      http://127.0.0.1:55125/ping
-#   5. arms the mode you pass with --mode (default: leave it as it is; a fresh
-#      install starts Off — pick ☕ Claude in the menu)
+#   5. arms the mode you pass with --mode (stored before the first launch, so the
+#      app arms itself; default: leave it as it is — a fresh install starts Off,
+#      pick ☕ Claude in the menu)
 #
 # Options:
 #   --mode off|interactive|background|always
@@ -130,7 +131,8 @@ if [ "$SUDOERS_STEP" = 1 ]; then
     if [ -e "$SUDOERS" ] && sudo -n /usr/bin/pmset -a disablesleep 0 2>/dev/null; then
         say "sudoers rule already in place ($SUDOERS)"
     else
-        say "Installing the sudoers rule — macOS will ask for your password once"
+        if sudo -n true 2>/dev/null; then say "Installing the sudoers rule"
+        else say "Installing the sudoers rule — macOS will ask for your password once"; fi
         echo "$RULE" > "$WORK/rule"
         /usr/sbin/visudo -c -q -f "$WORK/rule" >/dev/null 2>&1 || die "The sudoers rule did not validate."
         as_root /usr/bin/install -m 0440 -o root -g wheel "$WORK/rule" "$SUDOERS" \
@@ -138,6 +140,14 @@ if [ "$SUDOERS_STEP" = 1 ]; then
         sudo -n /usr/bin/pmset -a disablesleep 0 2>/dev/null \
             && say "sudoers rule works" || warn "sudoers rule installed but sudo -n still refuses — check $SUDOERS"
     fi
+fi
+
+# The mode goes into the app's preferences BEFORE it starts, so it arms itself
+# at launch (it re-arms from the stored mode). Setting it over HTTP afterwards
+# works too, but the /mode route answers only once the arm is done, which on a
+# Mac just after a boot can outlast any sensible curl timeout.
+if [ -n "$MODE" ]; then
+    defaults write "$BUNDLE_ID" LidAwake.mode -string "$MODE"
 fi
 
 if [ "$LOGIN_ITEM" = 1 ]; then
@@ -187,12 +197,11 @@ if [ "$UP" != 1 ]; then
 fi
 
 if [ -n "$MODE" ]; then
-    SET=0
-    for _ in 1 2 3 4 5 6; do
-        curl -fs -m 20 "http://127.0.0.1:$PORT/test/lid-awake/mode/$MODE" >/dev/null && { SET=1; break; }
+    # Confirm, patiently: the stored mode is armed at launch.
+    for _ in $(seq 1 12); do
+        printf '%s' "$(curl -fs -m 20 "http://127.0.0.1:$PORT/test/lid-awake/state" || true)" | grep -q "\"mode\":\"$MODE\"" && break
         sleep 5
     done
-    [ "$SET" = 1 ] || warn "Could not set mode $MODE yet — pick it in the 🛏 menu, or: curl 127.0.0.1:$PORT/test/lid-awake/mode/$MODE"
 fi
 STATE=$(curl -fs -m 3 "http://127.0.0.1:$PORT/test/lid-awake/state" || echo '{}')
 say "Running. State: $STATE"
