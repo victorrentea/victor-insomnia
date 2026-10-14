@@ -175,14 +175,24 @@ if [ "$STARTED" = 0 ]; then
     open -a "$APP"
 fi
 UP=0
-for _ in $(seq 1 30); do
+# Up to 60 s: right after a boot, or on a slow disk, a first launch can take
+# most of a minute (measured on a fresh VM).
+for _ in $(seq 1 120); do
     curl -fs -m 1 "http://127.0.0.1:$PORT/ping" >/dev/null 2>&1 && { UP=1; break; }
     sleep 0.5
 done
-[ "$UP" = 1 ] || die "It did not answer on port $PORT within 15 s. Log: /tmp/victor-insomnia.log"
+if [ "$UP" != 1 ]; then
+    warn "Installed and started, but it has not answered on port $PORT within 60 s yet."
+    warn "It may still be starting (first launch after a boot is slow). Check: curl http://127.0.0.1:$PORT/ping — log: /tmp/victor-insomnia.log"
+fi
 
 if [ -n "$MODE" ]; then
-    curl -fs -m 5 "http://127.0.0.1:$PORT/test/lid-awake/mode/$MODE" >/dev/null || warn "Could not set mode $MODE"
+    SET=0
+    for _ in 1 2 3 4 5 6; do
+        curl -fs -m 20 "http://127.0.0.1:$PORT/test/lid-awake/mode/$MODE" >/dev/null && { SET=1; break; }
+        sleep 5
+    done
+    [ "$SET" = 1 ] || warn "Could not set mode $MODE yet — pick it in the 🛏 menu, or: curl 127.0.0.1:$PORT/test/lid-awake/mode/$MODE"
 fi
 STATE=$(curl -fs -m 3 "http://127.0.0.1:$PORT/test/lid-awake/state" || echo '{}')
 say "Running. State: $STATE"

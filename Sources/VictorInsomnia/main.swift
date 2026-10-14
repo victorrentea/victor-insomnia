@@ -60,11 +60,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Re-armed on launch when it was left on, so a restart cannot silently
         // drop the lid guard in the middle of a flight.
-        lid.startIfEnabled()
-        menu.refresh()
+        // HTTP first (2026-10-14): arming runs `sudo pmset` and reads the audio
+        // devices, which right after a boot took a minute on a fresh Mac — and
+        // an installer (or anyone) asking /ping meanwhile saw no app at all.
         let server = HttpServer(lid: lid) { [weak menu] in menu?.refresh() }
         server.start()
         http = server
+        lid.startIfEnabled()
+        menu.refresh()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
