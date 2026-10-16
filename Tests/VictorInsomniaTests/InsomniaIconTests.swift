@@ -35,18 +35,21 @@ final class InsomniaIconTests: XCTestCase {
     func testTheDigitsSitOnTheCupWithoutWideningIt() {
         let cup = InsomniaIcon.cup(.plain)
         XCTAssertEqual(cup.image(digits: "")?.isTemplate, true)
-        XCTAssertEqual(cup.image(digits: "2/1")?.isTemplate, false)
+        XCTAssertEqual(cup.image(digits: "2")?.isTemplate, false)
         XCTAssertEqual(cup.image(digits: "3")?.size.width, cup.image?.size.width)
     }
 
-    func testTheDigitsAreClaudeSlashRc() {
-        let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1)
+    /// 2026-10-16, Victor: "2 on the coffee, then Claude×1 + /rc×1/3" —
+    /// one sum, the /rc part only where the mode holds the Mac up for it.
+    func testTheDigitsAreOneSum() {
+        let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1, rcOpen: 3)
         XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .interactive), "2")
-        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .always), "2/1")
+        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .always), "3")
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 3), mode: .interactive), "")
-        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .background), "2/1")
-        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 3), mode: .always), "/3")
-        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 4, rc: 0), mode: .background), "4")
+        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .background), "3")
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 3), mode: .always), "3")
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 4, rc: 0, rcOpen: 5), mode: .background), "4",
+                       "open but idle /rc sessions are not on the coffee")
     }
 
     func testNoDigitsWhenNothingWorksOrTheModeIsOff() {
@@ -59,7 +62,7 @@ final class InsomniaIconTests: XCTestCase {
     /// gate's grace the sessions are parked, and the bed alone is the truth.
     func testNoDigitsWhileTheInternetGateHasLetGo() {
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 7, rc: 1), mode: .background, stalled: true), "")
-        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 7, rc: 1), mode: .background, stalled: false), "7/1")
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 7, rc: 1), mode: .background, stalled: false), "8")
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .background, holding: false, stalled: true),
                        "Insomnia: Claude /rc — no internet, Claude is parked — the Mac may sleep")
     }
@@ -81,17 +84,17 @@ final class InsomniaIconTests: XCTestCase {
                        "Insomnia: Off — the Mac may sleep")
     }
 
-    /// 2026-10-14, Victor: hovering a `2/1` should say what the 2 and the 1 are.
+    /// 2026-10-14, Victor: hovering the digits should say what they count.
     func testTheTooltipExplainsTheDigits() {
-        XCTAssertEqual(InsomniaMenu.tooltip(mode: .background, holding: true, counts: .init(claude: 2, rc: 1)),
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .background, holding: true, counts: .init(claude: 2, rc: 1, rcOpen: 3)),
                        "Insomnia: Claude /rc — holding the Mac awake for:\n"
                        + "• 2 Claude sessions working in a terminal\n"
-                       + "• 1 remote-control (/rc) Claude session working")
+                       + "• 1 of 3 remote-control (/rc) sessions working")
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: true, counts: .init(claude: 1, rc: 3)),
                        "Insomnia: Claude — holding the Mac awake for:\n"
                        + "• 1 Claude session working in a terminal")
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .always, holding: true, counts: .init(claude: 0, rc: 1)),
                        "Insomnia: Always — holding the Mac awake no matter what\n"
-                       + "• 1 remote-control (/rc) Claude session working")
+                       + "• 1 of 1 remote-control (/rc) sessions working")
     }
 }

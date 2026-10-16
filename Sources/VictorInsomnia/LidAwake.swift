@@ -284,8 +284,8 @@ final class LidAwake {
     /// Whether this app is holding the Mac awake right now, as the menu bar
     /// shows it.
     var isHolding: Bool { holding }
-    /// The working sessions as of the last tick, split as the menu bar's
-    /// `claude/rc` digits show them. `nil` until the first tick.
+    /// The working sessions as of the last tick, split as the menu rows
+    /// show them. `nil` until the first tick.
     private(set) var counts: ClaudeActivity.WorkingCounts? {
         didSet {
             guard counts != oldValue, let now = counts else { return }
@@ -725,7 +725,8 @@ final class LidAwake {
         // `Claude` is declining to hold the lid open for it.
         let interactive = ClaudeActivity.interactiveWorkingSessions()
         let remote = ClaudeActivity.remoteWorkingSessions()
-        counts = ClaudeActivity.workingCounts(interactive: interactive, remote: remote)
+        counts = ClaudeActivity.workingCounts(interactive: interactive, remote: remote,
+                                              remoteOpen: ClaudeActivity.openRemoteSessions())
         let working = workingNow(interactive: interactive, remote: remote)
         // "Everything has finished and it is still awake" is a question the log
         // has to be able to answer, so the holders are named the moment the set

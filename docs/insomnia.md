@@ -13,17 +13,17 @@ describes the runtime, which moved unchanged:
   white/black for `Claude`, **orange** for `Claude /rc`, **red** for `Always`.
   The bed is never coloured. Pure in `InsomniaIcon.look(mode:holding:)`,
   unit-tested; repainted from `LidAwake.onHoldingChanged`.
-- **Digits on the icon** (2026-10-13): the sessions working right now,
-  `claude/rc` — `2` for terminal sessions only, `/1` for remote only, `2/1`
-  for both; nothing when none works or the mode is `Off`. Counted every tick,
-  both halves whatever the mode (`LidAwake.counts`, repainted from
-  `onCountsChanged`), formatted in `InsomniaMenu.iconCounts`. Drawn lime,
-  11pt heavy under a thick black outline, centred over the coffee (the cup's
-  hollow top) and the black above it, the cup lowered 7pt to make room; the
-  outline is 16 offset black copies, not a stroke (miter spikes). The menu
-  rows' counts are coloured too (`InsomniaMenu.attributedLabel`). The `/rc`
-  count is red in both, the local one green. The `/rc` half only in modes
-  where remote sessions keep the Mac up (`holdsRemote`)
+- **A number on the icon** (2026-10-13; one sum since 2026-10-16): the
+  sessions working right now that keep the Mac up — the terminal ones, plus
+  the `/rc` ones in modes where remote sessions keep it up (`holdsRemote`).
+  `Claude×1 + /rc×1/3` in the menu is a `2` on the coffee (Victor: *"2 on the
+  coffee, then Claude×1 + /rc×1/3"*). Until 2026-10-16 it was two halves,
+  `claude/rc`, the remote one red. Nothing when none works or the mode is
+  `Off`. Counted every tick, both halves whatever the mode (`LidAwake.counts`,
+  repainted from `onCountsChanged`), formatted in `InsomniaMenu.iconCounts`.
+  Drawn lime, 11pt heavy under a thick black outline, centred over the coffee
+  (the cup's hollow top) and the black above it, the cup lowered 7pt to make
+  room; the outline is 16 offset black copies, not a stroke (miter spikes)
   (`InsomniaIcon.image(digits:)`) — not as a button title beside it (it read
   as a separate menu bar item), nor as a top-right badge (tried first).
 - **Offline, the bed stands alone** (2026-10-14, on a flight: a 🛏 with a 7
@@ -44,15 +44,20 @@ describes the runtime, which moved unchanged:
   `menuHasKeyEquivalent` while the menu is open. `swift test --filter
   InsomniaMenuTests` leaves `insomnia-menu-{light,dark}.png` in `$TMPDIR`.
 - **The menu** is the four modes (✓ in the right column, working counts read as it
-  opens — `☕ 7×Claude`, `☕ 7×Claude + 1×/rc`, a zero dropping its `N×` but
-  not the word: `☕ 7×Claude + /rc`, since 2026-10-14; digits green, the `/rc`
-  one red, the `×` gray), `Sleep under 20%`, and Quit. **Quit clears the flag**
+  opens — `☕ Claude×7`, `☕ Claude×7 + /rc×1/3` since 2026-10-16, the name
+  first and its count after; `/rc` is **working of open**: 1 session busy from
+  the phone out of 3 alive, idle ones included (`ClaudeActivity.openRemoteSessions`,
+  `WorkingCounts.rcOpen`). A zero drops its `×N` but not the word (`Claude +
+  /rc×1/3`); `/rc` goes bare only with no remote session open, since `×0/3`
+  still says three are there. Working counts green, `×` and `/open` gray),
+  `Sleep under 20%`, `🛰️ Claude RC` (docs/claude-remote-control.md), and Quit. **Quit clears the flag**
   (`LidAwake.releaseForQuit`): a `SleepDisabled` nobody watches is a Mac that
   never sleeps again. A `pkill` does not — the rebuild loop relaunches within a
   second and the launch re-arms from the stored mode.
 - **Test hooks on `127.0.0.1:55125`**, same paths as before
   (`/test/lid-awake/state`, `/test/lid-awake/mode/<m>`,
-  `/test/lid-awake/flatline`, `/test/sleep-chime`, `/test/claude-activity`).
+  `/test/lid-awake/flatline`, `/test/sleep-chime`, `/test/claude-activity`;
+  `/test/claude-rc` since 2026-10-16).
 - **Every arm/disarm line says who did it** (2026-10-09, after a night the mode
   was found `Off` and the log could not tell a click from an agent):
   `LidAwake disarmed (menu)`, `LidAwake armed always (http) — …`, with

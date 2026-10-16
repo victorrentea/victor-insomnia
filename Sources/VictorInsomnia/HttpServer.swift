@@ -11,16 +11,19 @@ import Network
 ///   GET /test/lid-awake/flatline    → play the 🫀 flatline, flag untouched
 ///   GET /test/sleep-chime           → play the sleep tone (blocks ≤ 3 s)
 ///   GET /test/claude-activity       → which sessions count as working, and which are skipped
+///   GET /test/claude-rc             → 🛰️ what the row claims next to what tmux holds
 final class HttpServer {
     static let port: UInt16 = 55125
 
     private let lid: LidAwake
+    private let remoteControl: ClaudeRemoteControl
     private let onModeChanged: () -> Void
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "victor-insomnia-http", qos: .utility)
 
-    init(lid: LidAwake, onModeChanged: @escaping () -> Void) {
+    init(lid: LidAwake, remoteControl: ClaudeRemoteControl, onModeChanged: @escaping () -> Void) {
         self.lid = lid
+        self.remoteControl = remoteControl
         self.onModeChanged = onModeChanged
     }
 
@@ -92,6 +95,8 @@ final class HttpServer {
             return (200, "{\"ok\":true}")
         case "/test/claude-activity":
             return (200, Self.claudeActivityJSON())
+        case "/test/claude-rc":
+            return (200, remoteControl.stateJSON())
         default:
             return (404, "{\"error\":\"not found\"}")
         }
@@ -110,6 +115,7 @@ final class HttpServer {
         // with no `caffeinate`, so "working but not here" is the first thing
         // to check when the two disagree.
         let remote = ClaudeActivity.remoteWorkingSessions()
+        let remoteOpen = ClaudeActivity.openRemoteSessions()
         // Holding a `caffeinate` but not `busy` — a session waiting for an
         // answer, or CodexBar's usage probe — with the status that excluded it.
         let presence = ClaudeActivity.presenceByPid()
@@ -121,6 +127,7 @@ final class HttpServer {
             .map { "\"\($0):\(presence[$0]?.status ?? "")\"" }
         return "{\"working\":[\(working.map(String.init).joined(separator: ","))],"
             + "\"remote\":[\(remote.map(String.init).joined(separator: ","))],"
+            + "\"remote_open\":[\(remoteOpen.map(String.init).joined(separator: ","))],"
             + "\"skipped_not_busy\":[\(notBusy.joined(separator: ","))],"
             + "\"skipped_helpers\":[\(helpers.map { "\"\($0)\"" }.joined(separator: ","))]}"
     }

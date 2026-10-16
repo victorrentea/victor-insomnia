@@ -42,13 +42,14 @@ try? "\(myPid)".write(toFile: pidFilePath, atomically: true, encoding: .utf8)
 // --- The app ---
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let lid = LidAwake()
+    private let remoteControl = ClaudeRemoteControl()
     private var statusMenu: StatusMenu?
     private var http: HttpServer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         insomniaInfo("Victor Insomnia starting (built \(BuildInfo.time))")
         SystemAudioActivity.chromeTabAudible = { AddonsChromeAudible.ask() }
-        let menu = StatusMenu(lid: lid)
+        let menu = StatusMenu(lid: lid, remoteControl: remoteControl)
         statusMenu = menu
         lid.onHoldingChanged = { [weak menu] _ in menu?.refresh() }
         lid.onCountsChanged = { [weak menu] _ in menu?.refresh() }
@@ -63,10 +64,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // HTTP first (2026-10-14): arming runs `sudo pmset` and reads the audio
         // devices, which right after a boot took a minute on a fresh Mac — and
         // an installer (or anyone) asking /ping meanwhile saw no app at all.
-        let server = HttpServer(lid: lid) { [weak menu] in menu?.refresh() }
+        let server = HttpServer(lid: lid, remoteControl: remoteControl) { [weak menu] in menu?.refresh() }
         server.start()
         http = server
         lid.startIfEnabled()
+        // 🛰️ Claude RC: checked now, not a minute from now, so a server that
+        // died while the app was down is back by the time the icon appears.
+        remoteControl.startIfEnabled()
         menu.refresh()
     }
 

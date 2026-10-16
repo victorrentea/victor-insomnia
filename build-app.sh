@@ -48,6 +48,8 @@ cp "$BINARY" "$CONTENTS/MacOS/$APP_NAME"
 # The synthesized heartbeat + flatline (sounds/CREDITS.md): what InsomniaSounds
 # plays when ~/.victor-insomnia/sounds has none of its own.
 cp -R "$DIR/sounds" "$CONTENTS/Resources/sounds"
+# What the 🛰️ Claude RC row runs when ~/.victor-insomnia/claude-rc.sh is absent.
+cp "$DIR/scripts/claude-rc.sh" "$CONTENTS/Resources/claude-rc.sh"
 
 cat > "$CONTENTS/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

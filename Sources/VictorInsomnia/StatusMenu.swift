@@ -1,20 +1,23 @@
 import AppKit
 
 /// The ☕ / 🛏 in the menu bar and its menu: the four modes, the battery
-/// floor, Quit.
+/// floor, the 🛰️ Claude RC watchdog, Quit.
 final class StatusMenu: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let menu = NSMenu()
     private var modeItems: [LidAwakeMode: NSMenuItem] = [:]
     private var floorItem: NSMenuItem!
+    private var remoteControlItem: NSMenuItem!
     private var quitItem: NSMenuItem!
     /// `📵 No internet for N min…`, shown only while the internet gate has
     /// let go, so a 🛏 over working sessions explains itself.
     private let offlineItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let lid: LidAwake
+    private let remoteControl: ClaudeRemoteControl
 
-    init(lid: LidAwake) {
+    init(lid: LidAwake, remoteControl: ClaudeRemoteControl) {
         self.lid = lid
+        self.remoteControl = remoteControl
         super.init()
         menu.delegate = self
         menu.autoenablesItems = false
@@ -35,6 +38,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
                                action: #selector(toggleFloor), keyEquivalent: "")
         floorItem.target = self
         menu.addItem(floorItem)
+        remoteControlItem = NSMenuItem(title: InsomniaMenu.remoteControlLabel,
+                                       action: #selector(toggleRemoteControl), keyEquivalent: "")
+        remoteControlItem.target = self
+        remoteControlItem.toolTip = InsomniaMenu.remoteControlTooltip
+        menu.addItem(remoteControlItem)
         menu.addItem(.separator())
         // No `keyEquivalent`: its column would widen the whole menu. ⌘Q is
         // drawn in the title and claimed in `menuHasKeyEquivalent` instead.
@@ -71,6 +79,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         }
         titles.append((floorItem, InsomniaMenu.plain(InsomniaMenu.floorLabel),
                        LidAwakeSettings.sleepsUnderFloor ? InsomniaMenu.checkMark : ""))
+        titles.append((remoteControlItem, InsomniaMenu.plain(InsomniaMenu.remoteControlLabel),
+                       ClaudeRemoteControlSettings.isEnabled ? InsomniaMenu.checkMark : ""))
         titles.append((quitItem, InsomniaMenu.plain(InsomniaMenu.quitLabel), InsomniaMenu.quitHint))
         var widest = titles.map(\.1)
         if !offlineItem.isHidden { widest.append(InsomniaMenu.plain(offlineItem.title)) }
@@ -117,6 +127,13 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         LidAwakeSettings.sleepsUnderFloor.toggle()
         insomniaInfo("LidAwake: sleep under \(LidAwakePolicy.batteryFloorPercent)% "
             + (LidAwakeSettings.sleepsUnderFloor ? "on" : "off — no battery floor"))
+        refresh()
+    }
+
+    /// Unticking kills the `claude-rc` tmux session once — and with it any
+    /// session open from the phone; ticking starts it and watches it.
+    @objc private func toggleRemoteControl() {
+        remoteControl.setEnabled(!ClaudeRemoteControlSettings.isEnabled)
         refresh()
     }
 

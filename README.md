@@ -14,8 +14,12 @@ is let go to sleep like any other.
 | ☕ red | `Always` — held awake whatever is running |
 
 The menu: **Off / Claude / Claude /rc / Always**, each with the count of
-sessions working right now, plus **Sleep under 20%** (the battery floor that
-stands the whole thing down, on by default).
+sessions working right now (`Claude×1 + /rc×1/3`: one terminal session
+working, one of three remote sessions working), plus **Sleep under 20%** (the
+battery floor that stands the whole thing down, on by default) and
+**🛰️ Claude RC** (off by default): keeps a `claude remote-control` server up
+in a detached tmux session, so your phone can open Claude sessions on this Mac
+— [docs/claude-remote-control.md](docs/claude-remote-control.md).
 
 With the lid shut on battery it beats a quiet heartbeat every 10 s out of the
 built-in speaker, so you can hear through the bag that it is still up; a

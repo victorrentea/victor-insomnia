@@ -372,15 +372,40 @@ enum ClaudeActivity {
         /// minus any already counted above, so `claude + rc` is what
         /// `Claude /rc` holds awake.
         var rc = 0
+        /// Remote sessions alive, idle ones included — the `3` of `/rc×1/3`
+        /// (2026-10-16). Shown, never held for.
+        var rcOpen = 0
     }
 
     static func workingCounts() -> WorkingCounts {
-        workingCounts(interactive: interactiveWorkingSessions(), remote: remoteWorkingSessions())
+        workingCounts(interactive: interactiveWorkingSessions(), remote: remoteWorkingSessions(),
+                      remoteOpen: openRemoteSessions())
     }
 
-    static func workingCounts(interactive: [Int32], remote: [Int32]) -> WorkingCounts {
+    static func workingCounts(interactive: [Int32], remote: [Int32], remoteOpen: [Int32] = []) -> WorkingCounts {
         let claude = Set(interactive)
-        return WorkingCounts(claude: claude.count, rc: Set(remote).subtracting(claude).count)
+        let rc = Set(remote).subtracting(claude)
+        return WorkingCounts(claude: claude.count, rc: rc.count,
+                             rcOpen: Set(remoteOpen).subtracting(claude).union(rc).count)
+    }
+
+    /// The remote sessions alive, working or not: every `sdk-cli` presence
+    /// file whose pid is still a `claude` — the same guard
+    /// `remoteWorkingSessions` puts first, so working ⊆ open and `/rc×4/3`
+    /// cannot happen.
+    static func openRemoteSessions() -> [Int32] {
+        openRemoteSessions(in: sessionPresence(), executablePath: executablePath(of:))
+    }
+
+    static func openRemoteSessions(in sessions: [SessionPresence],
+                                   executablePath: (Int32) -> String?) -> [Int32] {
+        sessions.filter { session in
+            guard session.entrypoint == remoteEntrypoint,
+                  let path = executablePath(session.pid) else { return false }
+            return isClaudeExecutable(path: path)
+        }
+        .map(\.pid)
+        .sorted()
     }
 
     /// When a session's transcript was last written, and what its last line

@@ -24,5 +24,7 @@ Re-render with `plantuml -tsvg docs/lid-close.puml`.
   `~/.victor-insomnia/sounds/`, which wins over them.
 - **Users install with `install.sh`, releases come from `tools/release.sh`** —
   docs/insomnia.md, "Install and release".
+- **🛰️ Claude RC** (the `claude remote-control` watchdog, moved from Victor
+  Addons 2026-10-16): [docs/claude-remote-control.md](docs/claude-remote-control.md).
 - Talks to Victor Addons (55123) for one thing only, `/chrome/audible`, and
   works without it.
