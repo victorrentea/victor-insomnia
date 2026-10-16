@@ -357,6 +357,7 @@ enum ClaudeActivity {
             in: sessionPresence(),
             transcript: { transcriptSignal(for: $0) },
             executablePath: executablePath(of:),
+            arguments: arguments(of:),
             now: Date())
     }
 
@@ -394,13 +395,14 @@ enum ClaudeActivity {
     /// `remoteWorkingSessions` puts first, so working ⊆ open and `/rc×4/3`
     /// cannot happen.
     static func openRemoteSessions() -> [Int32] {
-        openRemoteSessions(in: sessionPresence(), executablePath: executablePath(of:))
+        openRemoteSessions(in: sessionPresence(), executablePath: executablePath(of:), arguments: arguments(of:))
     }
 
     static func openRemoteSessions(in sessions: [SessionPresence],
-                                   executablePath: (Int32) -> String?) -> [Int32] {
+                                   executablePath: (Int32) -> String?,
+                                   arguments: (Int32) -> [String]? = { _ in nil }) -> [Int32] {
         sessions.filter { session in
-            guard session.entrypoint == remoteEntrypoint,
+            guard isRemoteControlled(session, arguments: arguments),
                   let path = executablePath(session.pid) else { return false }
             return isClaudeExecutable(path: path)
         }
@@ -446,10 +448,11 @@ enum ClaudeActivity {
         in sessions: [SessionPresence],
         transcript: (SessionPresence) -> (modified: Date, state: TranscriptState)?,
         executablePath: (Int32) -> String?,
+        arguments: (Int32) -> [String]? = { _ in nil },
         now: Date
     ) -> [Int32] {
         sessions.filter { session in
-            guard session.entrypoint == remoteEntrypoint else { return false }
+            guard isRemoteControlled(session, arguments: arguments) else { return false }
             // The file outlives nothing, but a stale one outlives a crash — and
             // the same path test as above keeps a recycled pid from counting.
             guard let path = executablePath(session.pid), isClaudeExecutable(path: path) else { return false }
@@ -527,6 +530,44 @@ enum ClaudeActivity {
 
     /// The `entrypoint` a remote-control session writes. `cli` is a terminal.
     static let remoteEntrypoint = "sdk-cli"
+
+    /// **`sdk-cli` is every headless session, not only the phone's**
+    /// (2026-10-16): Walkie Talkie's agent and a Python daemon run
+    /// `claude -p --input-format stream-json` and write the same entrypoint —
+    /// the menu read `/rc×0/7` with four sessions open from the phone. Only
+    /// the `claude remote-control` host passes `--sdk-url` (the session's URL
+    /// on api.anthropic.com) to the sessions it spawns, so that is the mark.
+    /// Arguments that cannot be read count as remote: erring towards holding
+    /// the lid open, as before this check existed.
+    static func isRemoteControlled(_ session: SessionPresence, arguments: (Int32) -> [String]?) -> Bool {
+        guard session.entrypoint == remoteEntrypoint else { return false }
+        return arguments(session.pid)?.contains(remoteControlFlag) ?? true
+    }
+
+    static let remoteControlFlag = "--sdk-url"
+
+    /// A process's argv, via `KERN_PROCARGS2` — what `ps -o command=` prints.
+    /// `nil` when the kernel refuses (another user's process, a dead pid).
+    static func arguments(of pid: Int32) -> [String]? {
+        var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
+        var size = 0
+        guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > MemoryLayout<Int32>.size else { return nil }
+        var buffer = [UInt8](repeating: 0, count: size)
+        guard sysctl(&mib, 3, &buffer, &size, nil, 0) == 0 else { return nil }
+        // argc, then the executable path, NUL padding, then argc NUL-ended strings.
+        let argc = buffer.withUnsafeBytes { $0.load(as: Int32.self) }
+        var i = MemoryLayout<Int32>.size
+        while i < size, buffer[i] != 0 { i += 1 }
+        while i < size, buffer[i] == 0 { i += 1 }
+        var args: [String] = []
+        while args.count < argc, i < size {
+            let start = i
+            while i < size, buffer[i] != 0 { i += 1 }
+            args.append(String(decoding: buffer[start..<i], as: UTF8.self))
+            i += 1
+        }
+        return args
+    }
 
     /// The fallback tail, for a transcript whose last lines say nothing either
     /// way: the same five minutes the `caffeinate` half has.

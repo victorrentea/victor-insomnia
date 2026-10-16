@@ -47,7 +47,12 @@ describes the runtime, which moved unchanged:
   opens — `☕ Claude×7`, `☕ Claude×7 + /rc×1/3` since 2026-10-16, the name
   first and its count after; `/rc` is **working of open**: 1 session busy from
   the phone out of 3 alive, idle ones included (`ClaudeActivity.openRemoteSessions`,
-  `WorkingCounts.rcOpen`). A zero drops its `×N` but not the word (`Claude +
+  `WorkingCounts.rcOpen`). **A remote session is an `sdk-cli` one whose argv
+  carries `--sdk-url`** — only the `claude remote-control` host passes it;
+  Walkie Talkie's agent and other `claude -p` clients write `sdk-cli` too and
+  read as `/rc×0/7` with 4 phone sessions open until this check
+  (`ClaudeActivity.isRemoteControlled`, argv via `KERN_PROCARGS2`). It applies
+  to what `Claude /rc` holds the lid for as well. A zero drops its `×N` but not the word (`Claude +
   /rc×1/3`); `/rc` goes bare only with no remote session open, since `×0/3`
   still says three are there. Working counts green, `×` and `/open` gray),
   `Sleep under 20%`, `🛰️ Claude RC` (docs/claude-remote-control.md), and Quit. **Quit clears the flag**

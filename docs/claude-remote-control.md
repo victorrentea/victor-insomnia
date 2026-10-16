@@ -97,7 +97,8 @@ this", not "the app forbids it", so a server started by hand afterwards survives
   `staleReason`, `lastRestartReason`.
 - **`liveSessions` is not the `3` in `/rc×1/3`.** The menu counts the
   `sdk-cli` presence files in `~/.claude/sessions/` whose pid is still a
-  `claude` (`ClaudeActivity.openRemoteSessions`); the probe counts the server's
+  `claude` started with `--sdk-url` (`ClaudeActivity.openRemoteSessions`; other
+  headless `claude -p` clients write `sdk-cli` too); the probe counts the server's
   child processes. They normally agree; the staleness rule keeps the larger one
   of its own two witnesses so it errs on the side of waiting.
 

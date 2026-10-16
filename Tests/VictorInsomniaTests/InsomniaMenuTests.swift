@@ -167,6 +167,26 @@ final class InsomniaMenuTests: XCTestCase {
                                       2: "/Users/x/.local/share/claude/versions/2.1.301",
                                       3: "/Users/x/.local/share/claude/versions/2.1.301"]
         XCTAssertEqual(ClaudeActivity.openRemoteSessions(in: sessions, executablePath: { paths[$0] }), [1, 2])
+
+        // A headless `claude -p` from another app writes `sdk-cli` too; only
+        // the remote-control host's children carry `--sdk-url`.
+        let argv: [Int32: [String]] = [1: ["claude", "--print", "--sdk-url", "https://api.anthropic.com/v1/code/sessions/x"],
+                                       2: ["claude", "-p", "--input-format", "stream-json"]]
+        XCTAssertEqual(ClaudeActivity.openRemoteSessions(in: sessions, executablePath: { paths[$0] },
+                                                         arguments: { argv[$0] }), [1])
+        XCTAssertEqual(ClaudeActivity.remoteWorkingSessions(
+            in: sessions, transcript: { _ in (Date(), .working) }, executablePath: { paths[$0] },
+            arguments: { argv[$0] }, now: Date()), [1],
+            "the busy headless one is not the phone's")
+        XCTAssertEqual(ClaudeActivity.remoteWorkingSessions(
+            in: sessions, transcript: { _ in (Date(), .working) }, executablePath: { paths[$0] },
+            now: Date()), [1, 2], "unreadable arguments count, as before")
+    }
+
+    func testArgumentsReadsThisProcesssArgv() {
+        let mine = ClaudeActivity.arguments(of: getpid())
+        XCTAssertEqual(mine?.count, CommandLine.arguments.count)
+        XCTAssertEqual(mine?.dropFirst().first, CommandLine.arguments.dropFirst().first)
     }
 
     // MARK: - What each mode holds the lid open for
