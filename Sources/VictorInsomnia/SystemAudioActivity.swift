@@ -1,3 +1,4 @@
+import AppKit
 import CoreAudio
 import Foundation
 
@@ -57,7 +58,8 @@ enum SystemAudioActivity {
         for object in procs {
             guard isRunningOutput(object) else { continue }
             if processPID(object) == mine { continue }
-            let bundle = bundleID(object) ?? ""
+            let bundle = hostBundleID(reported: bundleID(object) ?? "",
+                                      responsible: processPID(object).flatMap(responsibleBundleID(of:)))
             // A process with no bundle id is identified by its binary instead —
             // both to skip the headless plumbing and so the refusal names
             // something a human can act on.
@@ -83,6 +85,35 @@ enum SystemAudioActivity {
         if !bundleID.isEmpty { return alwaysOpenPrefixes.contains(where: bundleID.hasPrefix) }
         guard let executablePath else { return false }
         return alwaysOpenBinaries.contains { executablePath.contains($0) }
+    }
+
+    /// The bundle id a process is judged by: its own, except for **WebKit's
+    /// helpers, which are judged by the app that spawned them**.
+    ///
+    /// **2026-10-16**: Victor shut the lid twice with Claudes working and heard
+    /// nothing — the output was muted, and the mute lift was refused because
+    /// `com.apple.WebKit.GPU is playing`. That GPU process was Walkie Talkie's
+    /// (its halo is a `WKWebView`, spawned at the first dictation and holding an
+    /// output stream open from then on). A `WKWebView` plays through a shared
+    /// system XPC service that reports WebKit's bundle id, not the host's, so
+    /// Walkie being on the plumbing list did not help. Word and PowerPoint run
+    /// one too. The responsible pid names the real host; when it cannot be read,
+    /// the WebKit id stays and keeps counting, the cautious answer.
+    static func hostBundleID(reported: String, responsible: String?) -> String {
+        guard reported.hasPrefix("com.apple.WebKit"), let responsible, !responsible.isEmpty else { return reported }
+        return responsible
+    }
+
+    /// `responsibility_get_pid_responsible_for_pid` — private but stable libsystem
+    /// call, what Activity Monitor uses to file an XPC helper under its app.
+    private static let responsiblePID: (@convention(c) (pid_t) -> pid_t)? = {
+        guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "responsibility_get_pid_responsible_for_pid") else { return nil }
+        return unsafeBitCast(symbol, to: (@convention(c) (pid_t) -> pid_t).self)
+    }()
+
+    private static func responsibleBundleID(of pid: pid_t) -> String? {
+        guard let host = responsiblePID?(pid), host > 0, host != pid else { return nil }
+        return NSRunningApplication(processIdentifier: host)?.bundleIdentifier
     }
 
     /// Is this Chrome holding its output stream open with no tab making sound?

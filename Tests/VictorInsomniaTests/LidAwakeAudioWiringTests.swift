@@ -87,6 +87,23 @@ final class LidAwakeAudioWiringTests: XCTestCase {
             bundleID: "com.apple.Music", executablePath: String?.none))
     }
 
+    func testAWebKitHelperIsJudgedByTheAppThatSpawnedIt() {
+        // 2026-10-16: Walkie Talkie's halo WKWebView played through
+        // com.apple.WebKit.GPU, which vetoed the mute lift — no heartbeat heard.
+        let walkie = SystemAudioActivity.hostBundleID(reported: "com.apple.WebKit.GPU",
+                                                      responsible: "ro.victorrentea.wispr-relay")
+        XCTAssertTrue(SystemAudioActivity.isAlwaysOpenPlumbing(bundleID: walkie, executablePath: String?.none))
+        // Safari's music still counts, under Safari's name.
+        XCTAssertEqual(SystemAudioActivity.hostBundleID(reported: "com.apple.WebKit.GPU",
+                                                        responsible: "com.apple.Safari"), "com.apple.Safari")
+        // An unknown host keeps the WebKit id, which counts as playing.
+        XCTAssertEqual(SystemAudioActivity.hostBundleID(reported: "com.apple.WebKit.GPU", responsible: nil),
+                       "com.apple.WebKit.GPU")
+        // Only WebKit is re-filed: an app's own id is never replaced.
+        XCTAssertEqual(SystemAudioActivity.hostBundleID(reported: "com.apple.Music",
+                                                        responsible: "ro.victorrentea.wispr-relay"), "com.apple.Music")
+    }
+
     func testChromeCountsOnlyWhenItsExtensionSaysATabIsAudible() {
         // 2026-09-23: Chrome's helper held its stream open at RMS 0 and vetoed
         // the boost. It is also where the music plays, so only its own answer
