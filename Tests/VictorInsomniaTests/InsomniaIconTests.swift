@@ -1,35 +1,39 @@
 import XCTest
 @testable import VictorInsomnia
 
-/// The menu bar icon: 🛏 whenever nothing keeps the Mac awake, ☕ while it is
-/// held, coloured by how far the mode goes.
+/// The menu bar icon: the mode picked in the menu — 🛏 Off, ☕ Claude
+/// (plain) and Claude /rc (orange), ⚠️ Always — plus 🪫 with the floor ticked.
 final class InsomniaIconTests: XCTestCase {
 
-    func testNothingHeldIsTheBedWhateverTheMode() {
-        // Victor: even with a staying-awake mode picked, no Claude working
-        // means the Mac will sleep — and the icon has to say so.
-        for mode in LidAwakeMode.allCases {
-            XCTAssertEqual(InsomniaIcon.look(mode: mode, holding: false), .bed, "\(mode)")
-        }
+    /// 2026-10-19, Victor: "the bed icon should only be displayed if I
+    /// selected Off… claude or claude /rc or always → a coffee cup… or a
+    /// little warning if Always".
+    func testTheIconIsTheModePicked() {
+        XCTAssertEqual(InsomniaIcon.look(mode: .off), .bed)
+        XCTAssertEqual(InsomniaIcon.look(mode: .interactive), .cup(.plain))
+        XCTAssertEqual(InsomniaIcon.look(mode: .background), .cup(.orange))
+        XCTAssertEqual(InsomniaIcon.look(mode: .always), .warning)
     }
 
-    func testOffIsTheBedEvenIfTheFlagIsSomehowUp() {
-        XCTAssertEqual(InsomniaIcon.look(mode: .off, holding: true), .bed)
-    }
-
-    func testTheCupIsPlainOrangeOrRedByMode() {
-        XCTAssertEqual(InsomniaIcon.look(mode: .interactive, holding: true), .cup(.plain))
-        XCTAssertEqual(InsomniaIcon.look(mode: .background, holding: true), .cup(.orange))
-        XCTAssertEqual(InsomniaIcon.look(mode: .always, holding: true), .cup(.red))
-    }
-
-    func testOnlyTheColouredCupsAreNotTemplates() {
+    func testOnlyThePlainLooksAreTemplates() {
         // A template image is the one macOS paints white or black with the
-        // menu bar — the bed and the plain cup must be, the tinted cups not.
+        // menu bar — the bed and the plain cup must be, the coloured ones not.
         XCTAssertEqual(InsomniaIcon.bed.image?.isTemplate, true)
         XCTAssertEqual(InsomniaIcon.cup(.plain).image?.isTemplate, true)
         XCTAssertEqual(InsomniaIcon.cup(.orange).image?.isTemplate, false)
-        XCTAssertEqual(InsomniaIcon.cup(.red).image?.isTemplate, false)
+        XCTAssertEqual(InsomniaIcon.warning.image?.isTemplate, false)
+    }
+
+    /// 2026-10-19, Victor: "if <20 sleeps is selected ⇒ the menu bar icon
+    /// should show the drained battery icon from the menu item".
+    func testTheFloorPutsTheBatteryBesideTheIcon() throws {
+        for look in [InsomniaIcon.bed, .cup(.plain), .cup(.orange), .warning] {
+            let alone = try XCTUnwrap(look.image(digits: ""))
+            let floored = try XCTUnwrap(look.image(digits: "", floor: true))
+            XCTAssertEqual(floored.size.width, alone.size.width + InsomniaIcon.floorGap + InsomniaIcon.floorImage.size.width, "\(look)")
+            XCTAssertFalse(floored.isTemplate, "a coloured 🪫 can't ride a template")
+        }
+        XCTAssertEqual(InsomniaIcon.bed.image(digits: "")?.isTemplate, true, "no floor, the bed stays a template")
     }
 
     func testTheDigitsSitOnTheCupWithoutWideningIt() {
@@ -44,18 +48,18 @@ final class InsomniaIconTests: XCTestCase {
     func testTheDigitsAreOneSum() {
         let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1, rcOpen: 3)
         XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .interactive), "2")
-        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .always), "3")
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 3), mode: .interactive), "")
         XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .background), "3")
-        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 3), mode: .always), "3")
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 4, rc: 0, rcOpen: 5), mode: .background), "4",
                        "open but idle /rc sessions are not on the coffee")
     }
 
-    func testNoDigitsWhenNothingWorksOrTheModeIsOff() {
+    func testNoDigitsWhenNothingWorksOrTheModeIsOffOrAlways() {
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 0, rc: 0), mode: .interactive), "")
         XCTAssertEqual(InsomniaMenu.iconCounts(nil, mode: .background), "")
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 2, rc: 1), mode: .off), "")
+        XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 2, rc: 1), mode: .always), "",
+                       "the ⚠️ has no coffee to carry them")
     }
 
     /// 2026-10-14, on a flight: a 🛏 with a 7 on it. Past the internet
@@ -94,7 +98,16 @@ final class InsomniaIconTests: XCTestCase {
                        "Insomnia: Claude — holding the Mac awake for:\n"
                        + "• 1 Claude session working in a terminal")
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .always, holding: true, counts: .init(claude: 0, rc: 1)),
-                       "Insomnia: Always — holding the Mac awake no matter what\n"
-                       + "• 1 of 1 remote-control (/rc) sessions working")
+                       "Insomnia: Always — holding the Mac awake no matter what")
+    }
+
+    func testTheTooltipExplainsTheBattery() {
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: false, floor: true),
+                       "Insomnia: Claude — no Claude working — the Mac may sleep\n"
+                       + "🪫 sleeps under 20% battery")
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: true, counts: .init(claude: 1, rc: 0), floor: true),
+                       "Insomnia: Claude — holding the Mac awake for:\n"
+                       + "• 1 Claude session working in a terminal\n"
+                       + "🪫 sleeps under 20% battery")
     }
 }

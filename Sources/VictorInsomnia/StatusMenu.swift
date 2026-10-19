@@ -1,6 +1,6 @@
 import AppKit
 
-/// The ☕ / 🛏 in the menu bar and its menu: the four modes, the battery
+/// The 🛏 / ☕ / ⚠️ (+ 🪫) in the menu bar and its menu: the four modes, the battery
 /// floor, the 🛰️ Claude RC watchdog, Quit.
 final class StatusMenu: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -10,7 +10,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     private var remoteControlItem: NSMenuItem!
     private var quitItem: NSMenuItem!
     /// `📵 No internet for N min…`, shown only while the internet gate has
-    /// let go, so a 🛏 over working sessions explains itself.
+    /// let go, so a bare cup over working sessions explains itself.
     private let offlineItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let lid: LidAwake
     private let remoteControl: ClaudeRemoteControl
@@ -59,9 +59,10 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         let holding = lid.isHolding
         let stall = mode.holdsRegardless ? nil : lid.offlineStall
         let digits = InsomniaMenu.iconCounts(lid.counts, mode: mode, stalled: stall != nil)
-        statusItem.button?.image = InsomniaIcon.look(mode: mode, holding: holding).image(digits: digits)
+        let floor = LidAwakeSettings.sleepsUnderFloor
+        statusItem.button?.image = InsomniaIcon.look(mode: mode).image(digits: digits, floor: floor)
         statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding, stalled: stall != nil,
-                                                            counts: lid.counts)
+                                                            counts: lid.counts, floor: floor)
         let note = InsomniaMenu.offlineNote(stalledFor: stall)
         offlineItem.title = note ?? ""
         offlineItem.isHidden = note == nil

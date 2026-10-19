@@ -5,28 +5,35 @@
 the move — everything below this section is the feature's history and still
 describes the runtime, which moved unchanged:
 
-- **The menu bar icon is the state.** 🛏️ (drawn in `InsomniaIcon.bedImage` to look like the emoji — a side view; SF Symbols only has the front-view `bed.double`) whenever nothing
-  keeps the Mac awake — `Off`, but also `Claude` / `Claude /rc` with no
-  session working: the mode says what it is *willing* to stay up for, the icon
-  what is happening. ☕ (`cup.and.saucer.fill`) while this app holds
-  `SleepDisabled` up, its colour saying how far the mode goes: plain
-  white/black for `Claude`, **orange** for `Claude /rc`, **red** for `Always`.
-  The bed is never coloured. Pure in `InsomniaIcon.look(mode:holding:)`,
-  unit-tested; repainted from `LidAwake.onHoldingChanged`.
+- **The menu bar icon is the mode picked** (2026-10-19; until then it was
+  the held state). 🛏️ (drawn in `InsomniaIcon.bedImage` to look like the emoji — a side view; SF Symbols only has the front-view `bed.double`)
+  **only for `Off`**, never coloured. ☕ (`cup.and.saucer.fill`) for `Claude`
+  (plain white/black) and `Claude /rc` (**orange**), whether or not a session
+  is working — the digits on it, or their absence, say that. ⚠️ (the menu
+  row's emoji) for `Always`. With **Sleep under 20%** ticked, the menu row's
+  🪫 sits to the right of the icon (`image(digits:floor:)`). Victor: *"the bed
+  icon should only be displayed if I selected Off… claude or claude /rc or
+  always → a coffee cup, with or without any numbers on it, or a little
+  warning if Always… if <20 sleeps is selected ⇒ the menu bar icon should
+  show the drained battery icon from the menu item"*. Before, a staying-awake
+  mode with no session working showed the bed too (the mode said what it was
+  *willing* to stay up for, the icon what was happening) and `Always` was a
+  red cup. Pure in `InsomniaIcon.look(mode:)`, unit-tested; "the Mac may
+  sleep" now lives in the tooltip only.
 - **A number on the icon** (2026-10-13; one sum since 2026-10-16): the
   sessions working right now that keep the Mac up — the terminal ones, plus
   the `/rc` ones in modes where remote sessions keep it up (`holdsRemote`).
   `Claude×1 + /rc×1/3` in the menu is a `2` on the coffee (Victor: *"2 on the
   coffee, then Claude×1 + /rc×1/3"*). Until 2026-10-16 it was two halves,
   `claude/rc`, the remote one red. Nothing when none works or the mode is
-  `Off`. Counted every tick, both halves whatever the mode (`LidAwake.counts`,
+  `Off` or `Always` (the ⚠️ has no coffee to carry them, 2026-10-19). Counted every tick, both halves whatever the mode (`LidAwake.counts`,
   repainted from `onCountsChanged`), formatted in `InsomniaMenu.iconCounts`.
   Drawn lime, 11pt heavy under a thick black outline, centred over the coffee
   (the cup's hollow top) and the black above it, the cup lowered 7pt to make
   room; the outline is 16 offset black copies, not a stroke (miter spikes)
   (`InsomniaIcon.image(digits:)`) — not as a button title beside it (it read
   as a separate menu bar item), nor as a top-right badge (tried first).
-- **Offline, the bed stands alone** (2026-10-14, on a flight: a 🛏 with a 7
+- **Offline, the cup goes bare** (2026-10-14, on a flight: a 🛏 with a 7
   on it — *"7 claude instances were awake but icon said bed"*). Once the
   internet gate has let go, the sessions are parked, not working, so the icon
   drops its digits (`iconCounts(stalled:)`, from `LidAwake.offlineStall`,

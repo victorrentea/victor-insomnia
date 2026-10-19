@@ -8,10 +8,11 @@ is let go to sleep like any other.
 
 | menu bar | meaning |
 |---|---|
-| 🛏 (white) | nothing is keeping the Mac awake — the lid sleeps it |
-| ☕ white | `Claude` — held awake for a session you are typing at |
+| 🛏 (white) | `Off` — the lid sleeps the Mac |
+| ☕ white | `Claude` — held awake for a session you are typing at; the number on it counts the ones working |
 | ☕ orange | `Claude /rc` — also for sessions driven from the phone over remote control |
-| ☕ red | `Always` — held awake whatever is running |
+| ⚠️ | `Always` — held awake whatever is running |
+| 🪫 beside it | **Sleep under 20%** is ticked |
 
 The menu: **Off / Claude / Claude /rc / Always**, each with the count of
 sessions working right now (`Claude×1 + /rc×1/3`: one terminal session

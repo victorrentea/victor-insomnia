@@ -100,13 +100,13 @@ enum InsomniaMenu {
     /// the Mac up, **one sum** (2026-10-16, Victor: *"2 on the coffee, then
     /// Claude×1 + /rc×1"*; until then `claude/rc`, two halves, the remote one
     /// red). The `/rc` sessions count only where they keep the Mac up
-    /// (`holdsRemote`: `Claude /rc`, `Always`) — under `Claude` they count for
-    /// nothing. Nothing at all when none works, or when the mode is `Off` —
-    /// the bed says it alone. **No digits while `stalled`** (2026-10-14, on a
-    /// flight): past the internet gate's grace the sessions are parked, not
-    /// working, and the bed is right.
+    /// (`holdsRemote`: `Claude /rc`) — under `Claude` they count for nothing.
+    /// Nothing at all when none works, when the mode is `Off` — the bed says
+    /// it alone — or `Always`, whose ⚠️ has no coffee to carry them
+    /// (2026-10-19). **No digits while `stalled`** (2026-10-14, on a flight):
+    /// past the internet gate's grace the sessions are parked, not working.
     static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode, stalled: Bool = false) -> String {
-        guard mode.holdsInteractive, !stalled, let counts else { return "" }
+        guard mode.holdsInteractive, !mode.holdsRegardless, !stalled, let counts else { return "" }
         let total = counts.claude + (mode.holdsRemote ? counts.rc : 0)
         return total > 0 ? "\(total)" : ""
     }
@@ -116,7 +116,8 @@ enum InsomniaMenu {
     static let remoteControlTooltip = "Keeps `claude remote-control` up in the detached tmux session \"claude-rc\", "
         + "checked every minute, so the phone can open new Claude sessions on this Mac. Unticking kills it."
 
-    static let floorLabel = "🪫 Sleep under \(LidAwakePolicy.batteryFloorPercent)%"
+    static let floorEmoji = "🪫"
+    static let floorLabel = "\(floorEmoji) Sleep under \(LidAwakePolicy.batteryFloorPercent)%"
 
     static let quitLabel = "Quit"
     static let quitHint = "⌘Q"
@@ -168,23 +169,24 @@ enum InsomniaMenu {
     /// one line each — what the digits beside the icon count (2026-10-14,
     /// Victor: the bare *"holding the Mac awake"* left the digits unexplained).
     /// The lines follow `iconCounts`, so a digit the icon hides is not
-    /// explained either.
+    /// explained either. The 🪫 beside the icon gets the last line.
     static func tooltip(mode: LidAwakeMode, holding: Bool, stalled: Bool = false,
-                        counts: ClaudeActivity.WorkingCounts? = nil) -> String {
+                        counts: ClaudeActivity.WorkingCounts? = nil, floor: Bool = false) -> String {
+        let floorLine = floor ? ["\(floorEmoji) sleeps under \(LidAwakePolicy.batteryFloorPercent)% battery"] : []
         guard holding else {
             let why = stalled ? "no internet, Claude is parked — "
                 : mode.holdsInteractive && !mode.holdsRegardless ? "no Claude working — " : ""
-            return "Insomnia: \(name(mode)) — \(why)the Mac may sleep"
+            return (["Insomnia: \(name(mode)) — \(why)the Mac may sleep"] + floorLine).joined(separator: "\n")
         }
         let lines = countLines(counts, mode: mode)
         let doing = mode.holdsRegardless ? "holding the Mac awake no matter what"
             : lines.isEmpty ? "holding the Mac awake" : "holding the Mac awake for:"
-        return (["Insomnia: \(name(mode)) — \(doing)"] + lines).joined(separator: "\n")
+        return (["Insomnia: \(name(mode)) — \(doing)"] + lines + floorLine).joined(separator: "\n")
     }
 
     /// The icon's sum in words, one bullet per part of it.
     private static func countLines(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> [String] {
-        guard let counts, mode.holdsInteractive else { return [] }
+        guard let counts, mode.holdsInteractive, !mode.holdsRegardless else { return [] }
         var lines: [String] = []
         if counts.claude > 0 { lines.append("• \(sessions(counts.claude)) working in a terminal") }
         if mode.holdsRemote, counts.rc > 0 {
@@ -198,51 +200,54 @@ enum InsomniaMenu {
     }
 }
 
-/// What the menu bar shows, decided from the mode and from whether this app is
-/// holding the kernel flag up right now.
+/// What the menu bar shows: the **mode picked in the menu**, not whether
+/// anything is being held right now (2026-10-19, Victor: *"the bed icon should
+/// only be displayed if I selected Off… claude or claude /rc or always → a
+/// coffee cup, with or without any numbers on it, or a little warning if
+/// Always"*). Until then a staying-awake mode with no session working showed
+/// the bed too; now the digits on the cup, or their absence, say whether
+/// anything is working, and the tooltip says whether the Mac may sleep.
 ///
-/// **🛏 whenever nothing is keeping the Mac awake** — Off, but also `Claude`
-/// or `Claude /rc` with no session working: the mode says what it is *willing*
-/// to stay up for, the icon says what is happening. **☕ while it holds**, and
-/// the cup's colour says how far the mode goes: plain (white/black, like every
-/// other menu bar icon) for `Claude`, orange for `Claude /rc`, red for
-/// `Always`. The bed is never coloured.
+/// 🛏 for `Off`, never coloured. ☕ for `Claude` (plain, white/black like
+/// every other menu bar icon) and `Claude /rc` (orange). ⚠️ for `Always`, the
+/// menu row's own emoji. With **Sleep under 20%** ticked the menu row's 🪫
+/// sits to the right of whichever it is (`image(digits:floor:)`).
 enum InsomniaIcon: Equatable {
     case bed
     case cup(Tint)
+    case warning
 
-    enum Tint: Equatable { case plain, orange, red }
+    enum Tint: Equatable { case plain, orange }
 
-    static func look(mode: LidAwakeMode, holding: Bool) -> InsomniaIcon {
-        guard holding else { return .bed }
+    static func look(mode: LidAwakeMode) -> InsomniaIcon {
         switch mode {
         case .off: return .bed
         case .interactive: return .cup(.plain)
         case .background: return .cup(.orange)
-        case .always: return .cup(.red)
+        case .always: return .warning
         }
     }
 
     /// The cup is an SF Symbol; the plain looks are template images, which
-    /// macOS paints white or black to match the menu bar.
+    /// macOS paints white or black to match the menu bar. The warning is the
+    /// emoji, in its own colours.
     var image: NSImage? {
-        let color: NSColor
         switch self {
         case .bed: return Self.bedImage
+        case .warning: return Self.warningImage
         case .cup(.plain):
             let image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "Insomnia")?
                 .withSymbolConfiguration(.init(pointSize: 14, weight: .regular))
             image?.isTemplate = true
             return image
-        case .cup(.orange): color = .systemOrange
-        case .cup(.red): color = .systemRed
+        case .cup(.orange):
+            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+                .applying(.init(paletteColors: [.systemOrange]))
+            let image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "Insomnia")?
+                .withSymbolConfiguration(config)
+            image?.isTemplate = false
+            return image
         }
-        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-            .applying(.init(paletteColors: [color]))
-        let image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "Insomnia")?
-            .withSymbolConfiguration(config)
-        image?.isTemplate = false
-        return image
     }
 
     /// **The digits sit on the coffee** (2026-10-13, Victor, in turns: *"not
@@ -261,16 +266,23 @@ enum InsomniaIcon: Equatable {
     /// corners of `2` and `/`. A template image can't carry a coloured badge,
     /// so the badged plain looks paint themselves white or black from the
     /// appearance they are drawn in; the image is redrawn when that changes.
-    func image(digits: String) -> NSImage? {
-        guard !digits.isEmpty, let base = image else { return image }
+    ///
+    /// `floor` adds the 🪫 to the right, on the same baseline as the glyph
+    /// (2026-10-19, Victor: *"if <20 sleeps is selected ⇒ the menu bar icon
+    /// should show the drained battery icon from the menu item"*).
+    func image(digits: String, floor: Bool = false) -> NSImage? {
+        guard let base = image else { return nil }
+        guard !digits.isEmpty || floor else { return base }
         let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .heavy)
         let shadow = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: NSColor.black])
         let body = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: Self.lime])
-        let text = body.size()
-        let width = max(base.size.width, text.width + 3)
-        let height = base.size.height + 7
+        let text = digits.isEmpty ? .zero : body.size()
+        let glyphWidth = max(base.size.width, digits.isEmpty ? 0 : text.width + 3)
+        let mark = floor ? Self.floorImage : nil
+        let width = glyphWidth + (mark.map { Self.floorGap + $0.size.width } ?? 0)
+        let height = max(base.size.height + (digits.isEmpty ? 0 : 7), mark?.size.height ?? 0)
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
-            let spot = NSRect(x: (width - base.size.width) / 2, y: 0,
+            let spot = NSRect(x: (glyphWidth - base.size.width) / 2, y: 0,
                               width: base.size.width, height: base.size.height)
             if base.isTemplate {
                 let dark = NSAppearance.currentDrawing().bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
@@ -278,6 +290,10 @@ enum InsomniaIcon: Equatable {
             } else {
                 base.draw(in: spot)
             }
+            if let mark {
+                mark.draw(in: NSRect(origin: NSPoint(x: glyphWidth + Self.floorGap, y: 0), size: mark.size))
+            }
+            guard !digits.isEmpty else { return true }
             // Centred over the coffee: the cup symbol's hollow top is at
             // x 10.25 of its 21pt width.
             let at = NSPoint(x: spot.minX + 10.25 * base.size.width / 21 - text.width / 2,
@@ -290,7 +306,30 @@ enum InsomniaIcon: Equatable {
             return true
         }
         image.isTemplate = false
-        image.accessibilityDescription = "\(base.accessibilityDescription ?? "Insomnia"), \(digits) working"
+        image.accessibilityDescription = [base.accessibilityDescription ?? "Insomnia",
+                                          digits.isEmpty ? nil : "\(digits) working",
+                                          floor ? "sleeps under \(LidAwakePolicy.batteryFloorPercent)%" : nil]
+            .compactMap { $0 }.joined(separator: ", ")
+        return image
+    }
+
+    static let floorGap: CGFloat = 2
+
+    /// The menu rows' emoji, drawn as images: ⚠️ in the cup's place, 🪫 beside it.
+    static let warningImage = emojiImage("⚠️", size: 13.5, description: "Insomnia: always awake")
+    static let floorImage = emojiImage(InsomniaMenu.floorEmoji, size: 13, description: "battery floor")
+
+    /// An emoji's glyph, cropped to its ink — the text's line box carries
+    /// padding above and below that would push it off the bar's centre.
+    private static func emojiImage(_ emoji: String, size: CGFloat, description: String) -> NSImage {
+        let text = NSAttributedString(string: emoji, attributes: [.font: NSFont.systemFont(ofSize: size)])
+        let ink = text.boundingRect(with: .zero, options: [.usesLineFragmentOrigin, .usesDeviceMetrics])
+        let image = NSImage(size: ink.size, flipped: false) { _ in
+            text.draw(at: NSPoint(x: -ink.minX, y: -ink.minY))
+            return true
+        }
+        image.isTemplate = false
+        image.accessibilityDescription = description
         return image
     }
 
