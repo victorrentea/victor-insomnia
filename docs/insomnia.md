@@ -10,8 +10,10 @@ describes the runtime, which moved unchanged:
   **only for `Off`**, never coloured. ☕ (`cup.and.saucer.fill`) for `Claude`
   (plain white/black) and `Claude /rc` (**orange**), whether or not a session
   is working — the digits on it, or their absence, say that. ⚠️ (the menu
-  row's emoji) for `Always`. With **Sleep under 20%** ticked, the menu row's
-  🪫 sits to the right of the icon (`image(digits:floor:)`). Victor: *"the bed
+  row's emoji) for `Always`. With **Sleep under 20%** ticked **and the
+  battery under 20%** (`LidAwake.underFloor`, read every tick), the menu row's
+  🪫 sits to the right of the icon (`image(digits:floor:)`); same day, Victor
+  had it shown for the tick alone at 49% and said it shouldn't be. Victor: *"the bed
   icon should only be displayed if I selected Off… claude or claude /rc or
   always → a coffee cup, with or without any numbers on it, or a little
   warning if Always… if <20 sleeps is selected ⇒ the menu bar icon should

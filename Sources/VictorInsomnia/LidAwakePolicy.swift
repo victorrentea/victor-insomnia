@@ -17,6 +17,11 @@ enum LidAwakePolicy {
     /// and a flight that ends with a flat battery has failed.
     static let batteryFloorPercent = 20
 
+    /// Whether the charge is under the floor; an unreadable battery is not.
+    static func isUnderFloor(_ battery: Int?) -> Bool {
+        battery.map { $0 < batteryFloorPercent } ?? false
+    }
+
     /// How long the internet has to have been gone before a "working" Claude
     /// stops counting as working. **Five minutes**, the number Victor asked
     /// for, and the same 300 s as Claude Code's own `caffeinate -t`: below it

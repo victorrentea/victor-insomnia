@@ -59,7 +59,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         let holding = lid.isHolding
         let stall = mode.holdsRegardless ? nil : lid.offlineStall
         let digits = InsomniaMenu.iconCounts(lid.counts, mode: mode, stalled: stall != nil)
-        let floor = LidAwakeSettings.sleepsUnderFloor
+        let floor = InsomniaMenu.showsFloor(ticked: LidAwakeSettings.sleepsUnderFloor, underFloor: lid.underFloor)
         statusItem.button?.image = InsomniaIcon.look(mode: mode).image(digits: digits, floor: floor)
         statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding, stalled: stall != nil,
                                                             counts: lid.counts, floor: floor)

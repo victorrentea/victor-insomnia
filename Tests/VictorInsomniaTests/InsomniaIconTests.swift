@@ -36,6 +36,15 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaIcon.bed.image(digits: "")?.isTemplate, true, "no floor, the bed stays a template")
     }
 
+    /// 2026-10-19, Victor: the 🪫 only once the battery is really under 20%.
+    func testTheBatteryShowsOnlyWhenTickedAndUnderTheFloor() {
+        XCTAssertTrue(InsomniaMenu.showsFloor(ticked: true, underFloor: LidAwakePolicy.isUnderFloor(19)))
+        XCTAssertFalse(InsomniaMenu.showsFloor(ticked: true, underFloor: LidAwakePolicy.isUnderFloor(20)))
+        XCTAssertFalse(InsomniaMenu.showsFloor(ticked: true, underFloor: LidAwakePolicy.isUnderFloor(49)))
+        XCTAssertFalse(InsomniaMenu.showsFloor(ticked: true, underFloor: LidAwakePolicy.isUnderFloor(nil)))
+        XCTAssertFalse(InsomniaMenu.showsFloor(ticked: false, underFloor: LidAwakePolicy.isUnderFloor(5)))
+    }
+
     func testTheDigitsSitOnTheCupWithoutWideningIt() {
         let cup = InsomniaIcon.cup(.plain)
         XCTAssertEqual(cup.image(digits: "")?.isTemplate, true)

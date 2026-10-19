@@ -119,6 +119,12 @@ enum InsomniaMenu {
     static let floorEmoji = "🪫"
     static let floorLabel = "\(floorEmoji) Sleep under \(LidAwakePolicy.batteryFloorPercent)%"
 
+    /// The 🪫 beside the menu bar icon: the row ticked **and** the battery
+    /// actually under the floor (2026-10-19, Victor: *"shouldn't show up unless
+    /// I have checked the sleep under twenty [and] the battery is really under
+    /// twenty"* — at 49% it was showing just for the tick).
+    static func showsFloor(ticked: Bool, underFloor: Bool) -> Bool { ticked && underFloor }
+
     static let quitLabel = "Quit"
     static let quitHint = "⌘Q"
     static let checkMark = "✓"

@@ -301,6 +301,17 @@ final class LidAwake {
     /// Fires on the main queue whenever the internet gate lets go or takes
     /// hold again.
     var onStalledChanged: ((Bool) -> Void)?
+    /// Whether the battery was under the floor at the last tick — the menu
+    /// bar's 🪫 waits for it, not just for the row to be ticked.
+    private(set) var underFloor = false {
+        didSet {
+            guard underFloor != oldValue else { return }
+            let now = underFloor
+            DispatchQueue.main.async { [weak self] in self?.onUnderFloorChanged?(now) }
+        }
+    }
+    /// Fires on the main queue whenever the battery crosses the floor.
+    var onUnderFloorChanged: ((Bool) -> Void)?
     /// The system volume as it was before the beats raised it — `nil` whenever we
     /// have not raised it, which is also what makes the restore idempotent.
     private var volumeBeforeBeats: Float?
@@ -720,6 +731,7 @@ final class LidAwake {
         ticks += 1
 
         let battery = Self.batteryPercent()
+        underFloor = LidAwakePolicy.isUnderFloor(battery)
         // Both halves are read every tick, whatever the mode, because the menu
         // bar shows both numbers (2026-10-13) — the /rc one included while
         // `Claude` is declining to hold the lid open for it.
