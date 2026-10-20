@@ -44,16 +44,18 @@ enum InsomniaMenu {
     /// The row in pieces, so the digits can be coloured without searching the
     /// string for them: `.count` marks a working count, `.dim` the `×` before
     /// it and the `/open` after it, in gray, `.remote` the `/rc` one.
-    private enum Part { case plain(String), count(Int), remote(Int), dim(String)
+    private enum Part { case plain(String), count(Int), remote(Int), dim(String), sleepless
         var text: String {
             switch self {
             case .plain(let s), .dim(let s): return s
+            case .sleepless: return InsomniaMenu.emoji(.always)
             case .count(let n), .remote(let n): return "\(n)"
             }
         }
     }
 
     private static func labelParts(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> [Part] {
+        if mode == .always { return [.sleepless, .plain(" \(name(mode))")] }
         guard let counts, mode == .interactive || mode == .background else { return [.plain(label(mode))] }
         var parts: [Part] = [.plain("\(emoji(mode)) Claude")]
         if counts.claude > 0 { parts += [.dim("×"), .count(counts.claude)] }
@@ -69,7 +71,8 @@ enum InsomniaMenu {
     /// just as the number"*). **The `/rc` one red** (2026-10-20, Victor:
     /// *"display the live /rc sessions in red font"*; green 10-16 → 10-20,
     /// red before), the colour the coffee's digits take when only `/rc` is
-    /// working. The `×` and the `/open` gray.
+    /// working. The `×` and the `/open` gray. `Always` leads with the menu
+    /// bar's crossed-out bed instead of its ⚠️ (2026-10-20).
     static func attributedLabel(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> NSAttributedString {
         let font = NSFont.menuFont(ofSize: 0)
         let row = NSMutableAttributedString()
@@ -80,11 +83,23 @@ enum InsomniaMenu {
             case .remote: attributes[.foregroundColor] = InsomniaIcon.remoteRed
             case .dim: attributes[.foregroundColor] = NSColor.secondaryLabelColor
             case .plain: break
+            case .sleepless:
+                let attachment = NSTextAttachment()
+                attachment.image = InsomniaIcon.sleeplessImage(height: rowIconHeight)
+                let size = attachment.image?.size ?? .zero
+                attachment.bounds = NSRect(x: 0, y: rowIconBaseline, width: size.width, height: size.height)
+                row.append(NSAttributedString(attachment: attachment))
+                continue
             }
             row.append(NSAttributedString(string: part.text, attributes: attributes))
         }
         return row
     }
+
+    /// The crossed-out bed on the `Always` row: about the emoji's height,
+    /// sat a little under the baseline like the emoji around it.
+    static let rowIconHeight: CGFloat = 13
+    static let rowIconBaseline: CGFloat = -2
 
     /// The number on the coffee: the sessions working right now that keep
     /// the Mac up, **one sum** (2026-10-16, Victor: *"2 on the coffee, then
@@ -92,7 +107,7 @@ enum InsomniaMenu {
     /// red). The `/rc` sessions count only where they keep the Mac up
     /// (`holdsRemote`: `Claude /rc`) — under `Claude` they count for nothing.
     /// Nothing at all when none works, when the mode is `Off` — the bed says
-    /// it alone — or `Always`, whose ⚠️ has no coffee to carry them
+    /// it alone — or `Always`, whose crossed-out bed has no coffee to carry them
     /// (2026-10-19).
     static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> String {
         guard mode.holdsInteractive, !mode.holdsRegardless, let counts else { return "" }
@@ -211,13 +226,16 @@ enum InsomniaMenu {
 /// anything is working, and the tooltip says whether the Mac may sleep.
 ///
 /// 🛏 for `Off`, never coloured. ☕ for `Claude` (plain, white/black like
-/// every other menu bar icon) and `Claude /rc` (orange). ⚠️ for `Always`, the
-/// menu row's own emoji. With **Sleep under 20%** ticked the menu row's 🪫
+/// every other menu bar icon) and `Claude /rc` (orange). For `Always` the bed
+/// **crossed out in red with a small ⚠️ over it** (2026-10-20, Victor: *"a bed
+/// crossed out… with the warning sign on top of the bed, small, quarter of the
+/// size or less, to warn me that this laptop will never sleep"*) — the same
+/// image leads the `Always` row in the menu. With **Sleep under 20%** ticked the menu row's 🪫
 /// sits to the right of whichever it is (`image(digits:floor:)`).
 enum InsomniaIcon: Equatable {
     case bed
     case cup(Tint)
-    case warning
+    case sleepless
 
     enum Tint: Equatable { case plain, orange }
 
@@ -226,17 +244,17 @@ enum InsomniaIcon: Equatable {
         case .off: return .bed
         case .interactive: return .cup(.plain)
         case .background: return .cup(.orange)
-        case .always: return .warning
+        case .always: return .sleepless
         }
     }
 
     /// The cup is an SF Symbol; the plain looks are template images, which
-    /// macOS paints white or black to match the menu bar. The warning is the
-    /// emoji, in its own colours.
+    /// macOS paints white or black to match the menu bar. The crossed-out bed
+    /// carries red and the ⚠️'s own colours, so it paints its bed itself.
     var image: NSImage? {
         switch self {
         case .bed: return Self.bedImage
-        case .warning: return Self.warningImage
+        case .sleepless: return Self.sleeplessImage(height: Self.bedImage.size.height)
         case .cup(.plain):
             let image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "Insomnia")?
                 .withSymbolConfiguration(.init(pointSize: 14, weight: .regular))
@@ -268,6 +286,7 @@ enum InsomniaIcon: Equatable {
     /// corners of `2` and `/`. A template image can't carry a coloured badge,
     /// so the badged plain looks paint themselves white or black from the
     /// appearance they are drawn in; the image is redrawn when that changes.
+    /// The crossed-out bed does the same from the start.
     ///
     /// `floor` adds the 🪫 to the right, on the same baseline as the glyph
     /// (2026-10-19, Victor: *"if <20 sleeps is selected ⇒ the menu bar icon
@@ -317,8 +336,7 @@ enum InsomniaIcon: Equatable {
 
     static let floorGap: CGFloat = 2
 
-    /// The menu rows' emoji, drawn as images: ⚠️ in the cup's place, 🪫 beside it.
-    static let warningImage = emojiImage("⚠️", size: 13.5, description: "Insomnia: always awake")
+    /// The menu row's 🪫, drawn as an image beside the icon.
     static let floorImage = emojiImage(InsomniaMenu.floorEmoji, size: 13, description: "battery floor")
 
     /// An emoji's glyph, cropped to its ink — the text's line box carries
@@ -383,28 +401,70 @@ enum InsomniaIcon: Equatable {
     /// 20 × 16 grid.
     static let bedImage: NSImage = {
         let image = NSImage(size: NSSize(width: 21, height: 16.8), flipped: false) { r in
-            let s = r.width / 20
-            func box(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ rad: CGFloat = 0) -> NSBezierPath {
-                NSBezierPath(roundedRect: NSRect(x: x * s, y: y * s, width: w * s, height: h * s),
-                             xRadius: rad * s, yRadius: rad * s)
-            }
             NSColor.black.setFill()
-            box(1, 0.5, 1.8, 14.5, 0.6).fill()     // headboard
-            box(17.2, 0.5, 1.8, 10, 0.6).fill()    // footboard
-            box(2.8, 2.2, 14.4, 2.4).fill()        // side rail
-            box(2.8, 5.3, 6, 2.6).fill()           // mattress at the head end
-            box(9.5, 5.3, 7.7, 3.6, 1).fill()      // blanket
-            // The pillow, tipped back against the headboard.
-            let pillow = box(3.3, 8.0, 4.6, 2.4, 1.2)
-            var tilt = AffineTransform(translationByX: -5.7 * s, byY: -9.6 * s)
-            tilt.append(AffineTransform(rotationByDegrees: -14))
-            tilt.append(AffineTransform(translationByX: 5.7 * s, byY: 9.6 * s))
-            pillow.transform(using: tilt)
-            pillow.fill()
+            bedPath(scale: r.width / 20).fill()
             return true
         }
         image.isTemplate = true
         image.accessibilityDescription = "Insomnia: the Mac may sleep"
         return image
     }()
+
+    /// The bed's shapes on its 20 × 16 grid, `s` points to a grid unit.
+    private static func bedPath(scale s: CGFloat) -> NSBezierPath {
+        func box(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ rad: CGFloat = 0) -> NSBezierPath {
+            NSBezierPath(roundedRect: NSRect(x: x * s, y: y * s, width: w * s, height: h * s),
+                         xRadius: rad * s, yRadius: rad * s)
+        }
+        let bed = NSBezierPath()
+        bed.append(box(1, 0.5, 1.8, 14.5, 0.6))     // headboard
+        bed.append(box(17.2, 0.5, 1.8, 10, 0.6))    // footboard
+        bed.append(box(2.8, 2.2, 14.4, 2.4))        // side rail
+        bed.append(box(2.8, 5.3, 6, 2.6))           // mattress at the head end
+        bed.append(box(9.5, 5.3, 7.7, 3.6, 1))      // blanket
+        // The pillow, tipped back against the headboard.
+        let pillow = box(3.3, 8.0, 4.6, 2.4, 1.2)
+        var tilt = AffineTransform(translationByX: -5.7 * s, byY: -9.6 * s)
+        tilt.append(AffineTransform(rotationByDegrees: -14))
+        tilt.append(AffineTransform(translationByX: 5.7 * s, byY: 9.6 * s))
+        pillow.transform(using: tilt)
+        bed.append(pillow)
+        return bed
+    }
+
+    /// **The bed that never sleeps** — `Always`. The bed, white or black like
+    /// the bar, a red slash from its headboard's top down to the foot, cut
+    /// clear of the bed around it so it reads as a slash and not a scratch,
+    /// and a ⚠️ about a quarter of the bed's height in the empty corner above
+    /// the blanket, clear of the slash. `height` scales it all: the bar's is
+    /// the bed's own, the menu row's the emoji's.
+    static func sleeplessImage(height: CGFloat) -> NSImage {
+        let size = NSSize(width: height * 21 / 16.8, height: height)
+        let image = NSImage(size: size, flipped: false) { r in
+            let s = r.width / 20
+            let dark = NSAppearance.currentDrawing().bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            (dark ? NSColor.white : NSColor.black).setFill()
+            bedPath(scale: s).fill()
+            let slash = NSBezierPath()
+            slash.move(to: NSPoint(x: 1.5 * s, y: 15.5 * s))
+            slash.line(to: NSPoint(x: 18.5 * s, y: 0.5 * s))
+            slash.lineCapStyle = .round
+            let context = NSGraphicsContext.current
+            context?.compositingOperation = .clear
+            slash.lineWidth = 4.2 * s
+            slash.stroke()
+            context?.compositingOperation = .sourceOver
+            slash.lineWidth = 2 * s
+            NSColor.systemRed.setStroke()
+            slash.stroke()
+            let warning = emojiImage("⚠️", size: 4.4 * s, description: "")
+            warning.draw(in: NSRect(origin: NSPoint(x: 14.8 * s - warning.size.width / 2,
+                                                    y: 15.6 * s - warning.size.height),
+                                    size: warning.size))
+            return true
+        }
+        image.isTemplate = false
+        image.accessibilityDescription = "Insomnia: always awake, the Mac never sleeps"
+        return image
+    }
 }

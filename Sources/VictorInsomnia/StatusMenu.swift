@@ -1,6 +1,6 @@
 import AppKit
 
-/// The 🛏 / ☕ / ⚠️ (+ 🪫) in the menu bar and its menu: the four modes, the battery
+/// The 🛏 / ☕ / crossed-out 🛏 (+ 🪫) in the menu bar and its menu: the four modes, the battery
 /// floor, the 🛰️ Claude RC watchdog, Quit.
 final class StatusMenu: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

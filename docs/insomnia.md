@@ -9,8 +9,12 @@ describes the runtime, which moved unchanged:
   the held state). 🛏️ (drawn in `InsomniaIcon.bedImage` to look like the emoji — a side view; SF Symbols only has the front-view `bed.double`)
   **only for `Off`**, never coloured. ☕ (`cup.and.saucer.fill`) for `Claude`
   (plain white/black) and `Claude /rc` (**orange**), whether or not a session
-  is working — the digits on it, or their absence, say that. ⚠️ (the menu
-  row's emoji) for `Always`. With **Sleep under 20%** ticked **and the
+  is working — the digits on it, or their absence, say that. For `Always`, **the bed crossed
+  out in red, a small ⚠️ in its empty corner** (2026-10-20, Victor: *"a bed
+  crossed out… the warning sign on top of the bed, small, quarter of the size
+  or less, to warn me that this laptop will never sleep"*;
+  `InsomniaIcon.sleeplessImage`) — the same image leads the `Always` row in
+  the menu, in place of its ⚠️; before, the bar showed the row's ⚠️ alone. With **Sleep under 20%** ticked **and the
   battery under 20%** (`LidAwake.underFloor`, read every tick), the menu row's
   🪫 sits to the right of the icon (`image(digits:floor:)`); same day, Victor
   had it shown for the tick alone at 49% and said it shouldn't be. Victor: *"the bed
@@ -32,7 +36,7 @@ describes the runtime, which moved unchanged:
   coffee if ever left only with /rc active"*): `Claude /rc` with no terminal
   session working and N phone ones paints N red; lime as soon as one terminal
   session joins (`InsomniaMenu.iconTint` → `InsomniaIcon.DigitTint`). Nothing when none works or the mode is
-  `Off` or `Always` (the ⚠️ has no coffee to carry them, 2026-10-19). Counted every tick, both halves whatever the mode (`LidAwake.counts`,
+  `Off` or `Always` (the crossed-out bed has no coffee to carry them, 2026-10-19). Counted every tick, both halves whatever the mode (`LidAwake.counts`,
   repainted from `onCountsChanged`), formatted in `InsomniaMenu.iconCounts`.
   Drawn lime, 11pt heavy under a thick black outline, centred over the coffee
   (the cup's hollow top) and the black above it, the cup lowered 7pt to make

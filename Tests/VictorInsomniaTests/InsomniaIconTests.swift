@@ -2,7 +2,7 @@ import XCTest
 @testable import VictorInsomnia
 
 /// The menu bar icon: the mode picked in the menu — 🛏 Off, ☕ Claude
-/// (plain) and Claude /rc (orange), ⚠️ Always — plus 🪫 with the floor ticked.
+/// (plain) and Claude /rc (orange), the bed crossed out for Always — plus 🪫 with the floor ticked.
 final class InsomniaIconTests: XCTestCase {
 
     /// 2026-10-19, Victor: "the bed icon should only be displayed if I
@@ -12,7 +12,8 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaIcon.look(mode: .off), .bed)
         XCTAssertEqual(InsomniaIcon.look(mode: .interactive), .cup(.plain))
         XCTAssertEqual(InsomniaIcon.look(mode: .background), .cup(.orange))
-        XCTAssertEqual(InsomniaIcon.look(mode: .always), .warning)
+        XCTAssertEqual(InsomniaIcon.look(mode: .always), .sleepless,
+                       "2026-10-20, Victor: a bed crossed out, a small warning on top")
     }
 
     func testOnlyThePlainLooksAreTemplates() {
@@ -21,13 +22,13 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaIcon.bed.image?.isTemplate, true)
         XCTAssertEqual(InsomniaIcon.cup(.plain).image?.isTemplate, true)
         XCTAssertEqual(InsomniaIcon.cup(.orange).image?.isTemplate, false)
-        XCTAssertEqual(InsomniaIcon.warning.image?.isTemplate, false)
+        XCTAssertEqual(InsomniaIcon.sleepless.image?.isTemplate, false)
     }
 
     /// 2026-10-19, Victor: "if <20 sleeps is selected ⇒ the menu bar icon
     /// should show the drained battery icon from the menu item".
     func testTheFloorPutsTheBatteryBesideTheIcon() throws {
-        for look in [InsomniaIcon.bed, .cup(.plain), .cup(.orange), .warning] {
+        for look in [InsomniaIcon.bed, .cup(.plain), .cup(.orange), .sleepless] {
             let alone = try XCTUnwrap(look.image(digits: ""))
             let floored = try XCTUnwrap(look.image(digits: "", floor: true))
             XCTAssertEqual(floored.size.width, alone.size.width + InsomniaIcon.floorGap + InsomniaIcon.floorImage.size.width, "\(look)")
@@ -68,7 +69,7 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaMenu.iconCounts(nil, mode: .background), "")
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 2, rc: 1), mode: .off), "")
         XCTAssertEqual(InsomniaMenu.iconCounts(.init(claude: 2, rc: 1), mode: .always), "",
-                       "the ⚠️ has no coffee to carry them")
+                       "the crossed-out bed has no coffee to carry them")
     }
 
     /// 2026-10-20, Victor: "/rc sessions in red font … over the coffee if
