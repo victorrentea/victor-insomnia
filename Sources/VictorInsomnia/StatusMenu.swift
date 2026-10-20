@@ -81,6 +81,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         menuIsOpen = true
+        LidAwakeSettings.restoreFloorIfRecharged(battery: LidAwake.batteryPercent())
         refresh()
         layOutRows(counts: ClaudeActivity.workingCounts())
     }
@@ -111,11 +112,14 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         refresh()
     }
 
-    /// Read by the next tick; nothing to arm or disarm.
+    /// Read by the next tick; nothing to arm or disarm. Unticked under the
+    /// floor, it comes back by itself at 20% (`restoreFloorIfRecharged`).
     @objc private func toggleFloor() {
-        LidAwakeSettings.sleepsUnderFloor.toggle()
+        LidAwakeSettings.setSleepsUnderFloor(!LidAwakeSettings.sleepsUnderFloor, battery: LidAwake.batteryPercent())
         insomniaInfo("LidAwake: sleep under \(LidAwakePolicy.batteryFloorPercent)% "
-            + (LidAwakeSettings.sleepsUnderFloor ? "on" : "off — no battery floor"))
+            + (LidAwakeSettings.sleepsUnderFloor ? "on"
+               : LidAwakeSettings.floorWaivedUntilRecharge ? "off until the battery is back at \(LidAwakePolicy.batteryFloorPercent)%"
+               : "off — no battery floor"))
         refresh()
     }
 

@@ -22,6 +22,23 @@ enum LidAwakePolicy {
         battery.map { $0 < batteryFloorPercent } ?? false
     }
 
+    /// **Unticking "Sleep under 20%" under the floor waives it for this
+    /// discharge only** (2026-10-20, Victor): at 19% the tick comes off to let
+    /// the work finish, and the first reading back at the floor puts it on
+    /// again — otherwise the next flight starts with no floor and nobody
+    /// remembers why. Unticked above the floor, it stays off: that was a
+    /// choice, not a rescue.
+    static func waivesFloorUntilRecharge(untickedAt battery: Int?) -> Bool {
+        isUnderFloor(battery)
+    }
+
+    /// Whether a waived floor comes back: the battery is at the floor or
+    /// above. An unreadable battery is no proof of a recharge.
+    static func restoresFloor(waived: Bool, battery: Int?) -> Bool {
+        guard waived, let battery else { return false }
+        return battery >= batteryFloorPercent
+    }
+
     enum Action: String, CaseIterable, Equatable {
         /// A Claude is working, the lid is shut and we are on battery: hold the
         /// flag and sound the heartbeat.

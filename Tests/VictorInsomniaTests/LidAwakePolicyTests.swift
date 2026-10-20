@@ -205,6 +205,22 @@ final class LidAwakePolicyTests: XCTestCase {
             .farewell)
     }
 
+    func testUntickedUnderTheFloorComesBackAtTwenty() {
+        // 2026-10-20: unticked at 19% is a waiver for this discharge…
+        XCTAssertTrue(LidAwakePolicy.waivesFloorUntilRecharge(untickedAt: 19))
+        XCTAssertFalse(LidAwakePolicy.restoresFloor(waived: true, battery: 19))
+        XCTAssertTrue(LidAwakePolicy.restoresFloor(waived: true, battery: 20))
+        XCTAssertTrue(LidAwakePolicy.restoresFloor(waived: true, battery: 85))
+        // …and no battery reading proves no recharge.
+        XCTAssertFalse(LidAwakePolicy.restoresFloor(waived: true, battery: nil))
+    }
+
+    func testUntickedAboveTheFloorStaysOff() {
+        XCTAssertFalse(LidAwakePolicy.waivesFloorUntilRecharge(untickedAt: 49))
+        XCTAssertFalse(LidAwakePolicy.waivesFloorUntilRecharge(untickedAt: nil))
+        XCTAssertFalse(LidAwakePolicy.restoresFloor(waived: false, battery: 85))
+    }
+
     func testFloorDoesNotApplyOnAC() {
         // Plugged in at 4%: the number is going up, and cutting the flag here
         // would sleep the Mac for no reason.

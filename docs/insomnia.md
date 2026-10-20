@@ -117,7 +117,13 @@ already in N) — exactly the two sets `LidAwake` holds the lid open for. Below 
 20%`** (`LidAwakeSettings.sleepsUnderFloor`, key `LidAwake.sleepUnderFloor`,
 default on) turns the floor off entirely — `LidAwakePolicy.decide(floorEnabled:)`;
 unticked, only macOS's own ~2–3% emergency sleep is left. `GET
-/test/lid-awake/state` reports it as `sleeps_under_floor`.
+/test/lid-awake/state` reports it as `sleeps_under_floor`. **Since 2026-10-20,
+unticked *under* the floor is a waiver for that discharge only**: the first
+reading back at ≥ 20% ticks it again (`LidAwakeSettings.restoreFloorIfRecharged`,
+asked by every tick and on `menuWillOpen`, since the tick sleeps while `Off`;
+stored as `LidAwake.floorWaivedUntilRecharge`, reported as
+`floor_waived_until_recharge`). Victor: unticked at 19% to finish the work, the
+next flight must not start with no floor. Unticked above 20% stays off.
 
 **Four states since 2026-10-02: `Off` / `Claude` / `Claude/rc` / `Always`.**
 The first three are the old `off` / `interactive` / `background` renamed (the
