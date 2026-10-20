@@ -43,12 +43,12 @@ enum InsomniaMenu {
 
     /// The row in pieces, so the digits can be coloured without searching the
     /// string for them: `.count` marks a working count, `.dim` the `×` before
-    /// it and the `/open` after it, in gray.
-    private enum Part { case plain(String), count(Int), dim(String)
+    /// it and the `/open` after it, in gray, `.remote` the `/rc` one.
+    private enum Part { case plain(String), count(Int), remote(Int), dim(String)
         var text: String {
             switch self {
             case .plain(let s), .dim(let s): return s
-            case .count(let n): return "\(n)"
+            case .count(let n), .remote(let n): return "\(n)"
             }
         }
     }
@@ -60,15 +60,16 @@ enum InsomniaMenu {
         guard mode == .background else { return parts }
         parts.append(.plain(" + /rc"))
         let open = max(counts.rcOpen, counts.rc)
-        if open > 0 { parts += [.dim("×"), .count(counts.rc), .dim("/\(open)")] }
+        if open > 0 { parts += [.dim("×"), .remote(counts.rc), .dim("/\(open)")] }
         return parts
     }
 
     /// The same row with its working counts in the icon's green (2026-10-13,
     /// Victor: *"the two in the menu name should also be displayed in green,
-    /// just as the number"*). The `/rc` one too since 2026-10-16 — it was red —
-    /// because the icon now shows one sum and the two add up into it; the `×`
-    /// and the `/open` gray.
+    /// just as the number"*). **The `/rc` one red** (2026-10-20, Victor:
+    /// *"display the live /rc sessions in red font"*; green 10-16 → 10-20,
+    /// red before), the colour the coffee's digits take when only `/rc` is
+    /// working. The `×` and the `/open` gray.
     static func attributedLabel(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> NSAttributedString {
         let font = NSFont.menuFont(ofSize: 0)
         let row = NSMutableAttributedString()
@@ -76,6 +77,7 @@ enum InsomniaMenu {
             var attributes: [NSAttributedString.Key: Any] = [.font: font]
             switch part {
             case .count: attributes[.foregroundColor] = InsomniaIcon.countGreen
+            case .remote: attributes[.foregroundColor] = InsomniaIcon.remoteRed
             case .dim: attributes[.foregroundColor] = NSColor.secondaryLabelColor
             case .plain: break
             }
@@ -103,12 +105,27 @@ enum InsomniaMenu {
     /// (`holdsRemote`: `Claude /rc`) — under `Claude` they count for nothing.
     /// Nothing at all when none works, when the mode is `Off` — the bed says
     /// it alone — or `Always`, whose ⚠️ has no coffee to carry them
-    /// (2026-10-19). **No digits while `stalled`** (2026-10-14, on a flight):
-    /// past the internet gate's grace the sessions are parked, not working.
-    static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode, stalled: Bool = false) -> String {
-        guard mode.holdsInteractive, !mode.holdsRegardless, !stalled, let counts else { return "" }
+    /// (2026-10-19). Offline they stay, gray (`iconTint`).
+    static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> String {
+        guard mode.holdsInteractive, !mode.holdsRegardless, let counts else { return "" }
         let total = counts.claude + (mode.holdsRemote ? counts.rc : 0)
         return total > 0 ? "\(total)" : ""
+    }
+
+    /// The colour of those digits. **Gray while `stalled`** (2026-10-20,
+    /// Victor, `📵 Offline 13 min` over a bare cup and `Claude×2` in the menu:
+    /// *"waiting for network, true, but they are working. They should show
+    /// up on top of the coffee cup"*): past the internet gate's grace the
+    /// sessions are parked and the Mac may sleep, so they show without the
+    /// lime that says "holding". 2026-10-14 to 10-20 they vanished instead.
+    /// **Red when every one of them is `/rc`** (2026-10-20, Victor: *"over
+    /// the coffee if ever left only with /rc active"*), the menu's `/rc`
+    /// colour; lime as soon as a terminal session is in the sum.
+    static func iconTint(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode,
+                         stalled: Bool = false) -> InsomniaIcon.DigitTint {
+        if stalled { return .parked }
+        guard let counts, mode.holdsRemote, counts.claude == 0, counts.rc > 0 else { return .working }
+        return .remote
     }
 
     /// Short on purpose: the widest title sets the width of the whole menu.
@@ -182,7 +199,8 @@ enum InsomniaMenu {
         guard holding else {
             let why = stalled ? "no internet, Claude is parked — "
                 : mode.holdsInteractive && !mode.holdsRegardless ? "no Claude working — " : ""
-            return (["Insomnia: \(name(mode)) — \(why)the Mac may sleep"] + floorLine).joined(separator: "\n")
+            let parked = stalled ? countLines(counts, mode: mode) : []
+            return (["Insomnia: \(name(mode)) — \(why)the Mac may sleep"] + parked + floorLine).joined(separator: "\n")
         }
         let lines = countLines(counts, mode: mode)
         let doing = mode.holdsRegardless ? "holding the Mac awake no matter what"
@@ -276,12 +294,12 @@ enum InsomniaIcon: Equatable {
     /// `floor` adds the 🪫 to the right, on the same baseline as the glyph
     /// (2026-10-19, Victor: *"if <20 sleeps is selected ⇒ the menu bar icon
     /// should show the drained battery icon from the menu item"*).
-    func image(digits: String, floor: Bool = false) -> NSImage? {
+    func image(digits: String, tint: DigitTint = .working, floor: Bool = false) -> NSImage? {
         guard let base = image else { return nil }
         guard !digits.isEmpty || floor else { return base }
         let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .heavy)
         let shadow = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: NSColor.black])
-        let body = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: Self.lime])
+        let body = NSAttributedString(string: digits, attributes: [.font: font, .foregroundColor: tint.color])
         let text = digits.isEmpty ? .zero : body.size()
         let glyphWidth = max(base.size.width, digits.isEmpty ? 0 : text.width + 3)
         let mark = floor ? Self.floorImage : nil
@@ -340,6 +358,29 @@ enum InsomniaIcon: Equatable {
     }
 
     private static let lime = NSColor(srgbRed: 0.2, green: 1, blue: 0.2, alpha: 1)
+
+    /// The digits' colour on the coffee (`InsomniaMenu.iconTint`): lime while
+    /// a terminal session is in the sum, red when only `/rc` ones are, gray
+    /// while offline has parked them all.
+    enum DigitTint: Equatable {
+        case working, remote, parked
+        var color: NSColor {
+            switch self {
+            case .working: return InsomniaIcon.lime
+            case .remote: return InsomniaIcon.iconRed
+            case .parked: return NSColor(white: 0.72, alpha: 1)
+            }
+        }
+    }
+
+    /// Brighter than `systemRed`, to read on the coffee under its black outline.
+    private static let iconRed = NSColor(srgbRed: 1, green: 0.27, blue: 0.27, alpha: 1)
+
+    /// The `/rc` count's red in the menu rows: the icon's on a dark menu,
+    /// `systemRed` on a light one.
+    static let remoteRed = NSColor(name: "InsomniaRemoteRed") { look in
+        look.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? iconRed : .systemRed
+    }
 
     /// The counts' green in the menu rows, the icon's convention carried over:
     /// the icon's lime on a dark menu, a darker green on a light one, where

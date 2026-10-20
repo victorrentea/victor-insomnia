@@ -27,7 +27,11 @@ describes the runtime, which moved unchanged:
   the `/rc` ones in modes where remote sessions keep it up (`holdsRemote`).
   `Claude×1 + /rc×1/3` in the menu is a `2` on the coffee (Victor: *"2 on the
   coffee, then Claude×1 + /rc×1/3"*). Until 2026-10-16 it was two halves,
-  `claude/rc`, the remote one red. Nothing when none works or the mode is
+  `claude/rc`, the remote one red. **Red again when the sum is all `/rc`**
+  (2026-10-20, Victor: *"display the live /rc sessions in red font … over the
+  coffee if ever left only with /rc active"*): `Claude /rc` with no terminal
+  session working and N phone ones paints N red; lime as soon as one terminal
+  session joins (`InsomniaMenu.iconTint` → `InsomniaIcon.DigitTint`). Nothing when none works or the mode is
   `Off` or `Always` (the ⚠️ has no coffee to carry them, 2026-10-19). Counted every tick, both halves whatever the mode (`LidAwake.counts`,
   repainted from `onCountsChanged`), formatted in `InsomniaMenu.iconCounts`.
   Drawn lime, 11pt heavy under a thick black outline, centred over the coffee
@@ -35,12 +39,16 @@ describes the runtime, which moved unchanged:
   room; the outline is 16 offset black copies, not a stroke (miter spikes)
   (`InsomniaIcon.image(digits:)`) — not as a button title beside it (it read
   as a separate menu bar item), nor as a top-right badge (tried first).
-- **Offline, the cup goes bare** (2026-10-14, on a flight: a 🛏 with a 7
-  on it — *"7 claude instances were awake but icon said bed"*). Once the
-  internet gate has let go, the sessions are parked, not working, so the icon
-  drops its digits (`iconCounts(stalled:)`, from `LidAwake.offlineStall`,
-  repainted on `onStalledChanged`), the tooltip says `no internet, Claude is
-  parked`, and a disabled row tops the menu: `📵 Offline N min` (the rest of
+- **Offline, the digits go gray** (2026-10-20). From 2026-10-14 (on a
+  flight: a 🛏 with a 7 on it — *"7 claude instances were awake but icon said
+  bed"*) the cup went bare instead; once the cup stopped meaning "held"
+  (2026-10-19) that read as a bug — Victor, `📵 Offline 13 min` over a bare
+  cup with `Claude×2` in the menu: *"waiting for network, true, but they are
+  working. They should show up on top of the coffee cup"*. Once the internet
+  gate has let go the sessions are parked and the Mac may sleep, so the same
+  sum is drawn gray, not lime or red (`iconTint(stalled:)` → `.parked`, from
+  `LidAwake.offlineStall`, repainted on `onStalledChanged`), the tooltip says
+  `no internet, Claude is parked` and lists them, and a disabled row tops the menu: `📵 Offline N min` (the rest of
   the sentence in its tooltip — the widest row sets the menu's width). The menu
   rows keep their counts.
 - **The menu is narrow since 2026-10-14** (Victor: *"make insomnia menu less
@@ -63,7 +71,8 @@ describes the runtime, which moved unchanged:
   (`ClaudeActivity.isRemoteControlled`, argv via `KERN_PROCARGS2`). It applies
   to what `Claude /rc` holds the lid for as well. A zero drops its `×N` but not the word (`Claude +
   /rc×1/3`); `/rc` goes bare only with no remote session open, since `×0/3`
-  still says three are there. Working counts green, `×` and `/open` gray),
+  still says three are there. Working counts green — the `/rc` one red since
+  2026-10-20, the coffee's colour for an all-`/rc` sum — `×` and `/open` gray),
   `Sleep under 20%`, `🛰️ Claude RC` (docs/claude-remote-control.md), and Quit. **Quit clears the flag**
   (`LidAwake.releaseForQuit`): a `SleepDisabled` nobody watches is a Mac that
   never sleeps again. A `pkill` does not — the rebuild loop relaunches within a

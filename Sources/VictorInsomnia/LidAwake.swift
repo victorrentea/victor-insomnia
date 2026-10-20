@@ -295,8 +295,8 @@ final class LidAwake {
     /// Fires on the main queue whenever those counts move.
     var onCountsChanged: ((ClaudeActivity.WorkingCounts) -> Void)?
     /// How long the internet has been gone, while the internet gate has let
-    /// go — `nil` otherwise. The menu bar drops its digits on it: the sessions
-    /// are parked, not working.
+    /// go — `nil` otherwise. The menu bar grays its digits on it: the sessions
+    /// are parked, and the Mac may sleep.
     var offlineStall: TimeInterval? { stalled ? net.offlineFor() : nil }
     /// Fires on the main queue whenever the internet gate lets go or takes
     /// hold again.

@@ -114,14 +114,14 @@ final class InsomniaMenuTests: XCTestCase {
                        "never fewer open than working")
     }
 
-    func testOnlyTheWorkingCountsAreGreenTheRestGray() {
+    func testTheWorkingCountsAreGreenTheRcOneRedTheRestGray() {
         let row = Menu.attributedLabel(.background, counts: .init(claude: 12, rc: 3, rcOpen: 5))
         XCTAssertEqual(row.string, "☕ Claude×12 + /rc×3/5")
         let text = row.string as NSString
         func colour(at i: Int) -> NSColor? { row.attribute(.foregroundColor, at: i, effectiveRange: nil) as? NSColor }
         XCTAssertEqual(colour(at: text.range(of: "12").location), InsomniaIcon.countGreen)
         XCTAssertEqual(colour(at: text.range(of: "12").location + 1), InsomniaIcon.countGreen)
-        XCTAssertEqual(colour(at: text.range(of: "3").location), InsomniaIcon.countGreen)
+        XCTAssertEqual(colour(at: text.range(of: "3").location), InsomniaIcon.remoteRed)
         XCTAssertEqual(colour(at: text.range(of: "/5").location), NSColor.secondaryLabelColor)
         XCTAssertEqual(colour(at: text.range(of: "×").location), NSColor.secondaryLabelColor)
         XCTAssertNil(colour(at: text.range(of: "/rc").location))
