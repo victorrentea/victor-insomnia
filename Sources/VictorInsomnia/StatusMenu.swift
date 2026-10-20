@@ -9,9 +9,6 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     private var floorItem: NSMenuItem!
     private var remoteControlItem: NSMenuItem!
     private var quitItem: NSMenuItem!
-    /// `📵 No internet for N min…`, shown only while the internet gate has
-    /// let go, so a bare cup over working sessions explains itself.
-    private let offlineItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let lid: LidAwake
     private let remoteControl: ClaudeRemoteControl
 
@@ -21,10 +18,6 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         super.init()
         menu.delegate = self
         menu.autoenablesItems = false
-        offlineItem.isEnabled = false
-        offlineItem.isHidden = true
-        offlineItem.toolTip = InsomniaMenu.offlineTooltip
-        menu.addItem(offlineItem)
         for mode in LidAwakeMode.allCases {
             let item = NSMenuItem(title: InsomniaMenu.label(mode),
                                   action: #selector(pickMode(_:)), keyEquivalent: "")
@@ -57,16 +50,12 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     func refresh() {
         let mode = LidAwakeSettings.mode
         let holding = lid.isHolding
-        let stall = mode.holdsRegardless ? nil : lid.offlineStall
         let digits = InsomniaMenu.iconCounts(lid.counts, mode: mode)
-        let tint = InsomniaMenu.iconTint(lid.counts, mode: mode, stalled: stall != nil)
+        let tint = InsomniaMenu.iconTint(lid.counts, mode: mode)
         let floor = InsomniaMenu.showsFloor(ticked: LidAwakeSettings.sleepsUnderFloor, underFloor: lid.underFloor)
         statusItem.button?.image = InsomniaIcon.look(mode: mode).image(digits: digits, tint: tint, floor: floor)
-        statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding, stalled: stall != nil,
+        statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding,
                                                             counts: lid.counts, floor: floor)
-        let note = InsomniaMenu.offlineNote(stalledFor: stall)
-        offlineItem.title = note ?? ""
-        offlineItem.isHidden = note == nil
         layOutRows(counts: lid.counts)
     }
 
@@ -84,9 +73,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         titles.append((remoteControlItem, InsomniaMenu.plain(InsomniaMenu.remoteControlLabel),
                        ClaudeRemoteControlSettings.isEnabled ? InsomniaMenu.checkMark : ""))
         titles.append((quitItem, InsomniaMenu.plain(InsomniaMenu.quitLabel), InsomniaMenu.quitHint))
-        var widest = titles.map(\.1)
-        if !offlineItem.isHidden { widest.append(InsomniaMenu.plain(offlineItem.title)) }
-        let stop = InsomniaMenu.tabStop(titles: widest)
+        let stop = InsomniaMenu.tabStop(titles: titles.map(\.1))
         for (item, title, mark) in titles {
             item.attributedTitle = InsomniaMenu.columned(title, mark: mark, tabStop: stop)
         }

@@ -127,11 +127,6 @@ final class InsomniaMenuTests: XCTestCase {
         XCTAssertNil(colour(at: text.range(of: "/rc").location))
     }
 
-    func testTheOfflineNoteShowsOnlyWhileStalled() {
-        XCTAssertNil(Menu.offlineNote(stalledFor: nil))
-        XCTAssertEqual(Menu.offlineNote(stalledFor: 754), "📵 Offline 12 min")
-    }
-
     func testTheFloorCheckboxNamesTheFloor() {
         XCTAssertEqual(Menu.floorLabel, "🪫 Sleep under 20%")
     }

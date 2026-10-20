@@ -23,8 +23,8 @@ enum LidAwakeMode: String, CaseIterable {
     /// `caffeinate` and are recognised by their transcript instead.
     case background
     /// **Whatever is running** (2026-10-02, Victor: *"keeps the laptop on
-    /// whatever, even if Claude is running or not"*). No session gate and no
-    /// internet gate — only the 20% battery floor still lets it go, because a
+    /// whatever, even if Claude is running or not"*). No session gate — only
+    /// the 20% battery floor still lets it go, because a
     /// flag nobody watches drains the Mac to zero in the bag.
     case always
 
@@ -294,13 +294,6 @@ final class LidAwake {
     }
     /// Fires on the main queue whenever those counts move.
     var onCountsChanged: ((ClaudeActivity.WorkingCounts) -> Void)?
-    /// How long the internet has been gone, while the internet gate has let
-    /// go — `nil` otherwise. The menu bar grays its digits on it: the sessions
-    /// are parked, and the Mac may sleep.
-    var offlineStall: TimeInterval? { stalled ? net.offlineFor() : nil }
-    /// Fires on the main queue whenever the internet gate lets go or takes
-    /// hold again.
-    var onStalledChanged: ((Bool) -> Void)?
     /// Whether the battery was under the floor at the last tick — the menu
     /// bar's 🪫 waits for it, not just for the row to be ticked.
     private(set) var underFloor = false {
@@ -338,9 +331,6 @@ final class LidAwake {
     /// log can say *who* — and say it only when the set changes, not six times
     /// a minute.
     private var holders: [Int32] = []
-    /// Whether the last tick had given up on the network, so the "they are all
-    /// parked" line is written once per outage instead of six times a minute.
-    private var stalled = false
     /// How many beats have gone out since launch, and when the last one did.
     ///
     /// Counted for one reason: **"I shut the lid and heard nothing" is two
@@ -353,9 +343,6 @@ final class LidAwake {
     private var lastBeatAt: Date?
     private var ticks = 0
     private let queue = DispatchQueue(label: "ro.victorrentea.victor-insomnia.lidawake")
-    /// Is there internet, and for how long has there not been? Started and
-    /// stopped with the row, so an unticked row costs no probes at all.
-    private let net = InternetWatch()
 
     // MARK: - Lifecycle
 
@@ -408,8 +395,6 @@ final class LidAwake {
             boostForBeats(false)
             wasBeating = false
             stopTimer()
-            net.stop()
-            stalled = false
             insomniaInfo("LidAwake disarmed (\(source.rawValue))")
             return true
         }
@@ -422,15 +407,11 @@ final class LidAwake {
             LidAwakeSettings.isEnabled = false
             boostForBeats(false)
             stopTimer()
-            net.stop()
             return false
         }
         holding = true
-        insomniaInfo("LidAwake armed \(LidAwakeSettings.mode.rawValue) (\(source.rawValue)) — watching for working Claude sessions with internet, "
+        insomniaInfo("LidAwake armed \(LidAwakeSettings.mode.rawValue) (\(source.rawValue)) — watching for working Claude sessions, "
             + (LidAwakeSettings.sleepsUnderFloor ? "floor \(LidAwakePolicy.batteryFloorPercent)%" : "no battery floor"))
-        // Before the first tick: the offline clock has to be running (and
-        // starting from now) before anything can ask how long it has been.
-        net.start()
         startTimer()
         // Arming plays the same lub-dub the bag will hear, not a different
         // confirmation chime: the click is also the volume check.
@@ -457,7 +438,6 @@ final class LidAwake {
     /// not drop the lid guard mid-flight.)
     func releaseForQuit() {
         stopTimer()
-        net.stop()
         boostForBeats(false)
         if holding || Self.isSleepDisabled() {
             _ = Self.setSleepDisabled(false)
@@ -474,7 +454,6 @@ final class LidAwake {
     func stateJSON() -> String {
         let working = workingNow()
         let battery = Self.batteryPercent()
-        let offlineFor = net.offlineFor()
         let action = LidAwakePolicy.decide(
             enabled: LidAwakeSettings.isEnabled,
             always: LidAwakeSettings.mode.holdsRegardless,
@@ -484,7 +463,6 @@ final class LidAwake {
             battery: battery,
             holding: holding,
             clamshellCausesSleep: Self.clamshellCausesSleep(),
-            offlineFor: offlineFor,
             floorEnabled: LidAwakeSettings.sleepsUnderFloor)
         return "{\"enabled\":\(LidAwakeSettings.isEnabled),"
             + "\"mode\":\"\(LidAwakeSettings.mode.rawValue)\","
@@ -496,8 +474,6 @@ final class LidAwake {
             + "\"battery\":\(battery.map(String.init) ?? "null"),"
             + "\"sleeps_under_floor\":\(LidAwakeSettings.sleepsUnderFloor),"
             + "\"working\":[\(working.map(String.init).joined(separator: ","))],"
-            + "\"offline_for\":\(Int(offlineFor)),"
-            + "\"offline_grace\":\(Int(LidAwakePolicy.offlineGrace)),"
             + "\"beating\":\(wasBeating),"
             + "\"beats\":\(beatCount),"
             + "\"last_beat_ago\":\(lastBeatAt.map { String(Int(Date().timeIntervalSince($0))) } ?? "null"),"
@@ -751,25 +727,6 @@ final class LidAwake {
             }
             holders = working
         }
-        // The second gate (2026-09-15): a session with no link to the API is
-        // parked, not working — and a parked turn still refreshes its
-        // `caffeinate`, so without this the pids above would hold a bagged
-        // laptop awake all night waiting for a Wi-Fi that is not coming back.
-        let offlineFor = net.offlineFor()
-        // `always` ignores the network, so there is no outage to announce.
-        let nowStalled = !LidAwakeSettings.mode.holdsRegardless
-            && offlineFor >= LidAwakePolicy.offlineGrace
-        if nowStalled != stalled {
-            if nowStalled {
-                insomniaInfo("LidAwake: no internet for \(Int(offlineFor))s — "
-                    + "\(working.count) Claude session(s) are parked, not working; letting the Mac sleep")
-            } else {
-                insomniaInfo("LidAwake: internet is back — watching for working Claude sessions again")
-            }
-            stalled = nowStalled
-            DispatchQueue.main.async { [weak self] in self?.onStalledChanged?(nowStalled) }
-        }
-
         let action = LidAwakePolicy.decide(
             enabled: LidAwakeSettings.isEnabled,
             always: LidAwakeSettings.mode.holdsRegardless,
@@ -779,7 +736,6 @@ final class LidAwake {
             battery: battery,
             holding: holding,
             clamshellCausesSleep: Self.clamshellCausesSleep(),
-            offlineFor: offlineFor,
             floorEnabled: LidAwakeSettings.sleepsUnderFloor)
 
         // The lid just came down: the diagram's left branch answers it.
@@ -822,13 +778,10 @@ final class LidAwake {
         case .farewell:
             // Same release, announced first: the pulse was audible right up to
             // this tick, so the bag is told the Mac is going down instead of
-            // just never hearing another beat. One flatline covers both reasons
-            // — the work finished, or the network died under it — because from
-            // inside the bag they mean the same thing: this sleep is on
-            // purpose, not a crash. The *log* says which; the ear only needs
-            // "deliberate".
+            // just never hearing another beat: this sleep is on purpose, not
+            // a crash.
             wasBeating = false
-            let reason = nowStalled ? "no internet — nothing can be working" : "no Claude working"
+            let reason = "no Claude working"
             if sound == .flatTone {
                 // On AC (no external display) the Mac is going to sleep, not
                 // dying: the long tone alone, under our still-raised flag.
@@ -1142,13 +1095,7 @@ final class LidAwake {
                 // Claude that is working again, and five seconds is long enough
                 // for that to happen. Leaving `holding` alone here is the whole
                 // fix — the next tick sees `.beat` and simply carries on.
-                // …and only if it could actually *do* anything: a session that
-                // wakes up during the flatline with the link still down is the
-                // same parked turn we just decided not to hold the lid open
-                // for, so the offline gate is re-checked here too.
-                if LidAwakeSettings.mode.holdsRegardless
-                    || (!self.workingNow().isEmpty
-                        && self.net.offlineFor() < LidAwakePolicy.offlineGrace) {
+                if LidAwakeSettings.mode.holdsRegardless || !self.workingNow().isEmpty {
                     insomniaInfo("LidAwake: a Claude started again during the flatline — still holding")
                     return
                 }

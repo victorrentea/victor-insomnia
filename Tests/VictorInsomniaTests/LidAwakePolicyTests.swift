@@ -27,12 +27,12 @@ final class LidAwakePolicyTests: XCTestCase {
             .standDown)
     }
 
-    // MARK: - `always`: no Claude gate, no internet gate, only the floor
+    // MARK: - `always`: no Claude gate, only the floor
 
-    func testAlwaysHoldsWithNoClaudeWorkingAndNoInternet() {
+    func testAlwaysHoldsWithNoClaudeWorking() {
         XCTAssertEqual(
             LidAwakePolicy.decide(enabled: true, always: true, claudeWorking: false,
-                                  lidClosed: true, onAC: false, battery: 80, offlineFor: 3600),
+                                  lidClosed: true, onAC: false, battery: 80),
             .beat)
         XCTAssertEqual(
             LidAwakePolicy.decide(enabled: true, always: true, claudeWorking: false,
@@ -348,76 +348,12 @@ final class LidAwakePolicyTests: XCTestCase {
         XCTAssertTrue(LidAwake.parseSleepDisabled(fromPmsetOutput: " SleepDisabled        1"))
     }
 
-    // MARK: - The internet gate (2026-09-15)
-    //
-    // A parked session still refreshes its `caffeinate`, so "a Claude is
-    // working" stays true through an outage it can do nothing about. Only
-    // activity *with* internet keeps the laptop on.
-
-    func testABlockedClaudeStopsHoldingTheLidOpenAfterTheGrace() {
+    /// 2026-10-20, Victor: Insomnia has nothing to do with the internet
+    /// (VicNet's job). A session waiting for the network holds the lid like
+    /// any working one; only the battery floor lets a bagged Mac go.
+    func testASessionWaitingForTheNetworkStillHoldsTheLid() {
         XCTAssertEqual(
-            LidAwakePolicy.decide(enabled: true, claudeWorking: true, lidClosed: true, onAC: false,
-                                  battery: 80, offlineFor: LidAwakePolicy.offlineGrace),
-            .release)
-    }
-
-    func testAShortOutageChangesNothing() {
-        // Wi-Fi hiccups, AP roams and a hotspot re-associating all live down
-        // here; sleeping the Mac on one of them would be the feature failing.
-        XCTAssertEqual(
-            LidAwakePolicy.decide(enabled: true, claudeWorking: true, lidClosed: true, onAC: false,
-                                  battery: 80, offlineFor: LidAwakePolicy.offlineGrace - 1),
-            .beat)
-    }
-
-    func testTheGraceIsFiveMinutes() {
-        XCTAssertEqual(LidAwakePolicy.offlineGrace, 300)
-    }
-
-    func testAnOfflineReleaseKeepsTheRowArmedSoTheNetComingBackReArmsIt() {
-        // Not a `.standDown`: an outage is a reason to stop holding, never a
-        // reason to stop watching. The first session to work once the link is
-        // back picks this up with nobody clicking anything.
-        XCTAssertNotEqual(
-            LidAwakePolicy.decide(enabled: true, claudeWorking: true, lidClosed: true, onAC: false,
-                                  battery: 80, offlineFor: 3600),
-            .standDown)
-    }
-
-    func testAnOfflineReleaseIsAnnouncedWhenThePulseWasAudible() {
-        // From inside the bag "the work finished" and "the network died" mean
-        // the same thing — this sleep is deliberate — so they get the same
-        // flatline. The log is where the two are told apart.
-        XCTAssertEqual(
-            LidAwakePolicy.decide(enabled: true, claudeWorking: true, lidClosed: true, onAC: false,
-                                  battery: 80, holding: true, offlineFor: 600),
-            .farewell)
-    }
-
-    func testAnOfflineReleaseAtTheDeskIsSilent() {
-        XCTAssertEqual(
-            LidAwakePolicy.decide(enabled: true, claudeWorking: true, lidClosed: false, onAC: false,
-                                  battery: 80, holding: true, offlineFor: 600),
-            .release)
-    }
-
-    func testTheBatteryFloorStillWinsOverAnOutage() {
-        // Different endings, different sounds: three Bassos say "this was the
-        // battery", and the floor is checked before anything else for exactly
-        // that reason.
-        XCTAssertEqual(
-            LidAwakePolicy.decide(enabled: true, claudeWorking: true, lidClosed: true, onAC: false,
-                                  battery: 10, offlineFor: 600),
-            .standDown)
-    }
-
-    func testUnknownConnectivityIsTreatedAsOnline() {
-        // `InternetWatch` reports 0 whenever it is not measuring. Sleeping a
-        // Mac mid-flight because nobody was probing is the worse of the two
-        // mistakes, so missing evidence never stalls the hold.
-        XCTAssertEqual(
-            LidAwakePolicy.decide(enabled: true, claudeWorking: true, lidClosed: true, onAC: false,
-                                  battery: 80, offlineFor: 0),
+            LidAwakePolicy.decide(enabled: true, claudeWorking: true, lidClosed: true, onAC: false, battery: 80),
             .beat)
     }
 }

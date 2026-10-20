@@ -86,18 +86,6 @@ enum InsomniaMenu {
         return row
     }
 
-    /// The disabled row on top of the menu while the internet gate has let
-    /// go (2026-10-14, on a flight: a 🛏 under seven working sessions read as
-    /// a contradiction). `nil` while there is no outage to explain.
-    /// Short, because the widest row sets the width of the whole menu
-    /// (2026-10-14); the rest of the sentence is `offlineTooltip`.
-    static func offlineNote(stalledFor: TimeInterval?) -> String? {
-        guard let stalledFor else { return nil }
-        return "📵 Offline \(Int(stalledFor / 60)) min"
-    }
-
-    static let offlineTooltip = "No internet: the working Claude sessions are parked, not working — the Mac may sleep"
-
     /// The number on the coffee: the sessions working right now that keep
     /// the Mac up, **one sum** (2026-10-16, Victor: *"2 on the coffee, then
     /// Claude×1 + /rc×1"*; until then `claude/rc`, two halves, the remote one
@@ -105,25 +93,17 @@ enum InsomniaMenu {
     /// (`holdsRemote`: `Claude /rc`) — under `Claude` they count for nothing.
     /// Nothing at all when none works, when the mode is `Off` — the bed says
     /// it alone — or `Always`, whose ⚠️ has no coffee to carry them
-    /// (2026-10-19). Offline they stay, gray (`iconTint`).
+    /// (2026-10-19).
     static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> String {
         guard mode.holdsInteractive, !mode.holdsRegardless, let counts else { return "" }
         let total = counts.claude + (mode.holdsRemote ? counts.rc : 0)
         return total > 0 ? "\(total)" : ""
     }
 
-    /// The colour of those digits. **Gray while `stalled`** (2026-10-20,
-    /// Victor, `📵 Offline 13 min` over a bare cup and `Claude×2` in the menu:
-    /// *"waiting for network, true, but they are working. They should show
-    /// up on top of the coffee cup"*): past the internet gate's grace the
-    /// sessions are parked and the Mac may sleep, so they show without the
-    /// lime that says "holding". 2026-10-14 to 10-20 they vanished instead.
-    /// **Red when every one of them is `/rc`** (2026-10-20, Victor: *"over
+    /// The colour of those digits: **red when every one of them is `/rc`** (2026-10-20, Victor: *"over
     /// the coffee if ever left only with /rc active"*), the menu's `/rc`
     /// colour; lime as soon as a terminal session is in the sum.
-    static func iconTint(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode,
-                         stalled: Bool = false) -> InsomniaIcon.DigitTint {
-        if stalled { return .parked }
+    static func iconTint(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> InsomniaIcon.DigitTint {
         guard let counts, mode.holdsRemote, counts.claude == 0, counts.rc > 0 else { return .working }
         return .remote
     }
@@ -193,14 +173,12 @@ enum InsomniaMenu {
     /// Victor: the bare *"holding the Mac awake"* left the digits unexplained).
     /// The lines follow `iconCounts`, so a digit the icon hides is not
     /// explained either. The 🪫 beside the icon gets the last line.
-    static func tooltip(mode: LidAwakeMode, holding: Bool, stalled: Bool = false,
+    static func tooltip(mode: LidAwakeMode, holding: Bool,
                         counts: ClaudeActivity.WorkingCounts? = nil, floor: Bool = false) -> String {
         let floorLine = floor ? ["\(floorEmoji) sleeps under \(LidAwakePolicy.batteryFloorPercent)% battery"] : []
         guard holding else {
-            let why = stalled ? "no internet, Claude is parked — "
-                : mode.holdsInteractive && !mode.holdsRegardless ? "no Claude working — " : ""
-            let parked = stalled ? countLines(counts, mode: mode) : []
-            return (["Insomnia: \(name(mode)) — \(why)the Mac may sleep"] + parked + floorLine).joined(separator: "\n")
+            let why = mode.holdsInteractive && !mode.holdsRegardless ? "no Claude working — " : ""
+            return (["Insomnia: \(name(mode)) — \(why)the Mac may sleep"] + floorLine).joined(separator: "\n")
         }
         let lines = countLines(counts, mode: mode)
         let doing = mode.holdsRegardless ? "holding the Mac awake no matter what"
@@ -360,15 +338,13 @@ enum InsomniaIcon: Equatable {
     private static let lime = NSColor(srgbRed: 0.2, green: 1, blue: 0.2, alpha: 1)
 
     /// The digits' colour on the coffee (`InsomniaMenu.iconTint`): lime while
-    /// a terminal session is in the sum, red when only `/rc` ones are, gray
-    /// while offline has parked them all.
+    /// a terminal session is in the sum, red when only `/rc` ones are.
     enum DigitTint: Equatable {
-        case working, remote, parked
+        case working, remote
         var color: NSColor {
             switch self {
             case .working: return InsomniaIcon.lime
             case .remote: return InsomniaIcon.iconRed
-            case .parked: return NSColor(white: 0.72, alpha: 1)
             }
         }
     }

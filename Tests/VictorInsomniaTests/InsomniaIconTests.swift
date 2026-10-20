@@ -71,22 +71,6 @@ final class InsomniaIconTests: XCTestCase {
                        "the ⚠️ has no coffee to carry them")
     }
 
-    /// 2026-10-20, Victor: `📵 Offline 13 min`, `Claude×2` in the menu and a
-    /// bare cup — "they are working. They should show up on top of the coffee
-    /// cup". Past the internet gate's grace they stay, gray: parked, not held.
-    func testOfflineTheDigitsStayButGray() {
-        let counts = ClaudeActivity.WorkingCounts(claude: 7, rc: 1)
-        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .background), "8")
-        XCTAssertEqual(InsomniaMenu.iconTint(counts, mode: .background, stalled: true), .parked)
-        XCTAssertEqual(InsomniaMenu.iconTint(.init(claude: 0, rc: 2), mode: .background, stalled: true), .parked)
-        XCTAssertEqual(InsomniaMenu.iconTint(counts, mode: .background, stalled: false), .working)
-        XCTAssertEqual(InsomniaMenu.tooltip(mode: .background, holding: false, stalled: true),
-                       "Insomnia: Claude /rc — no internet, Claude is parked — the Mac may sleep")
-        XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: false, stalled: true, counts: .init(claude: 2, rc: 0)),
-                       "Insomnia: Claude — no internet, Claude is parked — the Mac may sleep\n"
-                       + "• 2 Claude sessions working in a terminal")
-    }
-
     /// 2026-10-20, Victor: "/rc sessions in red font … over the coffee if
     /// ever left only with /rc active". Lime once a terminal one is in the sum.
     func testTheDigitsAreRedWhenOnlyRemoteSessionsWork() {
@@ -95,14 +79,6 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaMenu.iconTint(.init(claude: 1, rc: 0), mode: .background), .working)
         XCTAssertEqual(InsomniaMenu.iconTint(.init(claude: 0, rc: 2), mode: .interactive), .working,
                        "under Claude the /rc ones are not on the coffee at all")
-    }
-
-    /// Every lid opening on a plane used to buy five fresh minutes of holding.
-    func testAWakeAfterAnOfflineSleepGetsOnlyAMinute() {
-        let now = Date()
-        XCTAssertEqual(InternetWatch.clockAfterWake(wentToSleepOffline: false, now: now), now)
-        let offline = InternetWatch.clockAfterWake(wentToSleepOffline: true, now: now)
-        XCTAssertEqual(LidAwakePolicy.offlineGrace - now.timeIntervalSince(offline), 60, accuracy: 0.001)
     }
 
     func testTheTooltipSaysWhatItIsDoing() {

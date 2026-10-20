@@ -39,18 +39,16 @@ describes the runtime, which moved unchanged:
   room; the outline is 16 offset black copies, not a stroke (miter spikes)
   (`InsomniaIcon.image(digits:)`) — not as a button title beside it (it read
   as a separate menu bar item), nor as a top-right badge (tried first).
-- **Offline, the digits go gray** (2026-10-20). From 2026-10-14 (on a
-  flight: a 🛏 with a 7 on it — *"7 claude instances were awake but icon said
-  bed"*) the cup went bare instead; once the cup stopped meaning "held"
-  (2026-10-19) that read as a bug — Victor, `📵 Offline 13 min` over a bare
-  cup with `Claude×2` in the menu: *"waiting for network, true, but they are
-  working. They should show up on top of the coffee cup"*. Once the internet
-  gate has let go the sessions are parked and the Mac may sleep, so the same
-  sum is drawn gray, not lime or red (`iconTint(stalled:)` → `.parked`, from
-  `LidAwake.offlineStall`, repainted on `onStalledChanged`), the tooltip says
-  `no internet, Claude is parked` and lists them, and a disabled row tops the menu: `📵 Offline N min` (the rest of
-  the sentence in its tooltip — the widest row sets the menu's width). The menu
-  rows keep their counts.
+- **No internet gate since 2026-10-20** (Victor: *"the insomnia behaviour
+  shouldn't have anything to do with the internet connection"* — that is
+  moving into VicNet, `victor-net`, which shows its own `📵 Offline N min`).
+  Same day, `📵 Offline 13 min` over a bare cup with `Claude×2` in the menu:
+  *"waiting for network, true, but they are working. They should show up on
+  top of the coffee cup"*. `InternetWatch.swift`, the 5-minute
+  `offlineGrace`, the `📵` menu row and `offline_for` / `offline_grace` in
+  `/test/lid-awake/state` are gone: a session waiting for the network is a
+  working session, the digits stay, and only the battery floor lets a bagged
+  Mac go. The 2026-09-15 section below is history.
 - **The menu is narrow since 2026-10-14** (Victor: *"make insomnia menu less
   wide, the same way you did for fx menu"*): no `NSMenuItem.state` and no
   `keyEquivalent`. Each opened a column of its own for the whole menu — the
@@ -126,7 +124,7 @@ The first three are the old `off` / `interactive` / `background` renamed (the
 raw values in `UserDefaults` did not move, so nobody's mode changes on an
 update); `rc` is the sessions opened from the phone over remote control.
 `Always` (raw `always`) is new: it holds the lid open **whatever is running** —
-no Claude gate, no internet gate (`LidAwakePolicy.decide(always:)`). The 20%
+no Claude gate (`LidAwakePolicy.decide(always:)`). The 20%
 battery floor still stands it down, because an unwatched `SleepDisabled`
 drains the Mac to zero in the bag. From a script:
 `curl 127.0.0.1:55125/test/lid-awake/mode/always`.
@@ -416,7 +414,10 @@ with `remote` the pids counted through this half — the first thing to look at
 when "it is working but the Mac slept" comes back.
 
 
-## The internet gate: a parked Claude is not a working Claude (2026-09-15)
+## The internet gate: a parked Claude is not a working Claude (2026-09-15, removed 2026-10-20)
+
+**Removed 2026-10-20** — Insomnia no longer asks the network (see the top of
+this file). Kept for the reasoning; none of the code below exists any more.
 
 `ClaudeActivity` answers "is a session working?" and, on a laptop with no Wi-Fi,
 it answers **yes to a session that cannot do a thing**. Since 2026-09-14 Victor's
@@ -825,8 +826,8 @@ silence had four readings and no way to tell them apart —
 
 - the Mac went to sleep (the ordinary, correct one);
 - 😴 Claude insomnia is `off`;
-- it is armed, but nothing counted as working (nothing running, or running
-  without internet past the five-minute grace, or a `background` session while
+- it is armed, but nothing counted as working (nothing running, or only
+  a `background` session while
   the mode is `interactive`);
 - the feature is broken — the sudoers rule gone, the app not running, `pmset`
   refusing.
@@ -1007,7 +1008,7 @@ What changed in behaviour:
 | lid closes with the battery already under the floor, armed | Bassos + dying pulse | flat tone (overlay, mode → Off) |
 | lid closes on AC, no external display, the Mac sleeps | silence | flat tone |
 | lid shut on AC (no display), the work finishes | 🫀 dying pulse | flat tone |
-| lid shut on battery, the work finishes / offline 5 min / floor crossed | dying pulse | dying pulse |
+| lid shut on battery, the work finishes / floor crossed | dying pulse | dying pulse |
 
 **The flat tone still races the sleep when nothing was holding the lid.**
 Today's log, closes on battery with nothing held: `sleep tone done in 3.0 s`

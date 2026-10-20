@@ -53,7 +53,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusMenu = menu
         lid.onHoldingChanged = { [weak menu] _ in menu?.refresh() }
         lid.onCountsChanged = { [weak menu] _ in menu?.refresh() }
-        lid.onStalledChanged = { [weak menu] _ in menu?.refresh() }
         lid.onUnderFloorChanged = { [weak menu] _ in menu?.refresh() }
         // The battery floor stood the feature down: the mode is `off` now.
         lid.onAutoDisabled = { [weak menu] pct in

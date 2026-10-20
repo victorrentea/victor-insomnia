@@ -29,7 +29,7 @@ case ( lid closed\n(a real open→closed edge,\nnot a dark wake) )
   if (armed, on battery, floor ticked,\nbattery < 20%?) then (yes)
     :**standDown**
     mode → Off, flag off, 🪫 overlay; <<#FFE0E0>>
-  elseif (armed and (Always, or a Claude working\nwith internet in the last 5 min)?) then (yes)
+  elseif (armed and (Always, or a Claude working)?) then (yes)
     if (on battery?) then (yes)
       :**beat**
       hold the flag; <<#E0FFE0>>
@@ -74,7 +74,7 @@ case ( every 10 s,\nwhile armed )
       :🔊 **none**
       the overlay says it; <<#EEEEEE>>
     endif
-  elseif (Always, or a Claude working\nwith internet in the last 5 min?) then (yes)
+  elseif (Always, or a Claude working?) then (yes)
     if (lid closed and on battery?) then (yes)
       :**beat**
       hold the flag; <<#E0FFE0>>
@@ -88,8 +88,7 @@ case ( every 10 s,\nwhile armed )
     endif
   elseif (we were holding, and the lid is closed\nwith nothing else keeping the Mac up?) then (yes)
     :**farewell**
-    the work finished (or the internet
-    has been gone ≥ 5 min) under the lid; <<#FFF0D0>>
+    the work finished under the lid; <<#FFF0D0>>
     if (on battery?) then (yes)
       :🔊 **dyingPulse**
       the whole 🫀 flatline:

@@ -58,7 +58,6 @@ final class LidRulesDiagramTests: XCTestCase {
         var onAC = false
         var battery = 80
         var holding = false
-        var offlineFor: TimeInterval = 0
         /// External display (`!AppleClamshellCausesSleep`).
         var externalDisplay = false
         /// `SleepDisabled` raised by something other than us.
@@ -85,8 +84,6 @@ final class LidRulesDiagramTests: XCTestCase {
              event: .lidClosed, holding: true, action: .farewell, sound: .flatTone),
         Path(name: "close, armed, nothing working → flat tone",
              event: .lidClosed, action: .release, sound: .flatTone),
-        Path(name: "close, a Claude working but offline for 5 min → flat tone",
-             event: .lidClosed, working: true, offlineFor: 300, action: .release, sound: .flatTone),
         Path(name: "close, mode Off → flat tone",
              event: .lidClosed, armed: false, action: .release, sound: .flatTone),
         Path(name: "close, mode Off, battery low → flat tone",
@@ -113,8 +110,6 @@ final class LidRulesDiagramTests: XCTestCase {
              event: .tick, working: true, onAC: true, holding: true, action: .hold, sound: .none),
         Path(name: "tick, lid shut, on battery, the work finishes → dying pulse",
              event: .tick, holding: true, wasBeating: true, action: .farewell, sound: .dyingPulse),
-        Path(name: "tick, lid shut, on battery, offline 5 min → dying pulse",
-             event: .tick, working: true, holding: true, offlineFor: 300, wasBeating: true, action: .farewell, sound: .dyingPulse),
         Path(name: "tick, lid shut, on AC without a display, the work finishes → flat tone",
              event: .tick, onAC: true, holding: true, action: .farewell, sound: .flatTone),
         Path(name: "tick, lid open, the work finishes → silent release",
@@ -129,7 +124,7 @@ final class LidRulesDiagramTests: XCTestCase {
             let action = LidAwakePolicy.decide(
                 enabled: p.armed, always: p.always, claudeWorking: p.working,
                 lidClosed: lidClosed, onAC: p.onAC, battery: p.battery, holding: p.holding,
-                clamshellCausesSleep: !p.externalDisplay, offlineFor: p.offlineFor)
+                clamshellCausesSleep: !p.externalDisplay)
             XCTAssertEqual(action, p.action, p.name)
             let sound: LidAwakePolicy.Sound
             switch p.event {
