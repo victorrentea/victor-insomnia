@@ -22,22 +22,15 @@ enum LidAwakePolicy {
         battery.map { $0 < batteryFloorPercent } ?? false
     }
 
-    /// **Unticking "Sleep under 20%" under the floor waives it for this
-    /// discharge only** (2026-10-20, Victor): at 19% the tick comes off to let
-    /// the work finish, and the first reading back at the floor puts it on
-    /// again — otherwise the next flight starts with no floor and nobody
-    /// remembers why. Unticked above the floor, it stays off: that was a
-    /// choice, not a rescue.
-    static func waivesFloorUntilRecharge(untickedAt battery: Int?) -> Bool {
-        isUnderFloor(battery)
-    }
-
-    /// Whether a waived floor comes back: the battery is at the floor or
-    /// above. An unreadable battery is no proof of a recharge.
-    static func restoresFloor(waived: Bool, battery: Int?) -> Bool {
-        guard waived, let battery else { return false }
-        return battery >= batteryFloorPercent
-    }
+    /// **Unticking "Sleep under 20%" lasts until the charger goes in**
+    /// (2026-10-21, Victor: *"the first time you connect the laptop to power,
+    /// the Sleep under 20 tick resets to true"*): whatever the battery when it
+    /// came off, the first plug-in puts it back, so the next flight never
+    /// starts without a floor. Replaces 2026-10-20's "back at 20%", which only
+    /// covered an untick under the floor — one made at 19% on the build before
+    /// it was still off the next morning at 100%. A plug-in is battery → AC;
+    /// already on AC is not one, so an untick at the desk holds until the next.
+    static func isPlugIn(wasOnAC: Bool, onAC: Bool) -> Bool { !wasOnAC && onAC }
 
     enum Action: String, CaseIterable, Equatable {
         /// A Claude is working, the lid is shut and we are on battery: hold the

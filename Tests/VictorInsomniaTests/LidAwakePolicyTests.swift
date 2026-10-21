@@ -205,20 +205,23 @@ final class LidAwakePolicyTests: XCTestCase {
             .farewell)
     }
 
-    func testUntickedUnderTheFloorComesBackAtTwenty() {
-        // 2026-10-20: unticked at 19% is a waiver for this discharge…
-        XCTAssertTrue(LidAwakePolicy.waivesFloorUntilRecharge(untickedAt: 19))
-        XCTAssertFalse(LidAwakePolicy.restoresFloor(waived: true, battery: 19))
-        XCTAssertTrue(LidAwakePolicy.restoresFloor(waived: true, battery: 20))
-        XCTAssertTrue(LidAwakePolicy.restoresFloor(waived: true, battery: 85))
-        // …and no battery reading proves no recharge.
-        XCTAssertFalse(LidAwakePolicy.restoresFloor(waived: true, battery: nil))
+    /// 2026-10-21, Victor: "the first time you connect the laptop to power,
+    /// the Sleep under 20 tick resets to true" — the plug-in is the moment.
+    func testTheFloorComesBackWhenTheChargerGoesIn() {
+        XCTAssertTrue(LidAwakePolicy.isPlugIn(wasOnAC: false, onAC: true))
+        XCTAssertFalse(LidAwakePolicy.isPlugIn(wasOnAC: true, onAC: true), "still on AC is not a plug-in")
+        XCTAssertFalse(LidAwakePolicy.isPlugIn(wasOnAC: true, onAC: false), "unplugging is not")
+        XCTAssertFalse(LidAwakePolicy.isPlugIn(wasOnAC: false, onAC: false))
     }
 
-    func testUntickedAboveTheFloorStaysOff() {
-        XCTAssertFalse(LidAwakePolicy.waivesFloorUntilRecharge(untickedAt: 49))
-        XCTAssertFalse(LidAwakePolicy.waivesFloorUntilRecharge(untickedAt: nil))
-        XCTAssertFalse(LidAwakePolicy.restoresFloor(waived: false, battery: 85))
+    func testThePlugInTicksAnUntickedFloorAgain() {
+        let defaults = UserDefaults.standard
+        let saved = defaults.object(forKey: LidAwakeSettings.sleepUnderFloorKey)
+        defer { defaults.set(saved, forKey: LidAwakeSettings.sleepUnderFloorKey) }
+        LidAwakeSettings.sleepsUnderFloor = false
+        XCTAssertTrue(LidAwakeSettings.restoreFloorOnPlugIn(battery: 100), "unticked at any level, not only under 20%")
+        XCTAssertTrue(LidAwakeSettings.sleepsUnderFloor)
+        XCTAssertFalse(LidAwakeSettings.restoreFloorOnPlugIn(battery: 100), "already ticked: nothing to do")
     }
 
     func testFloorDoesNotApplyOnAC() {

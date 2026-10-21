@@ -121,13 +121,18 @@ already in N) — exactly the two sets `LidAwake` holds the lid open for. Below 
 20%`** (`LidAwakeSettings.sleepsUnderFloor`, key `LidAwake.sleepUnderFloor`,
 default on) turns the floor off entirely — `LidAwakePolicy.decide(floorEnabled:)`;
 unticked, only macOS's own ~2–3% emergency sleep is left. `GET
-/test/lid-awake/state` reports it as `sleeps_under_floor`. **Since 2026-10-20,
-unticked *under* the floor is a waiver for that discharge only**: the first
-reading back at ≥ 20% ticks it again (`LidAwakeSettings.restoreFloorIfRecharged`,
-asked by every tick and on `menuWillOpen`, since the tick sleeps while `Off`;
-stored as `LidAwake.floorWaivedUntilRecharge`, reported as
-`floor_waived_until_recharge`). Victor: unticked at 19% to finish the work, the
-next flight must not start with no floor. Unticked above 20% stays off.
+/test/lid-awake/state` reports it as `sleeps_under_floor`. **Since 2026-10-21,
+any untick lasts until the charger goes in**: the first plug-in (battery → AC)
+ticks it again, whatever the battery was when it came off (Victor: *"the first
+time you connect the laptop to power, the Sleep under 20 tick resets to
+true"*). Heard from macOS's power-source notification (`Power.onPlugIn` →
+`LidAwakeSettings.restoreFloorOnPlugIn`), so it works in `Off` too, where the
+tick sleeps; starting the app on AC is not a plug-in, and an untick made on AC
+holds until the next one. It replaced 2026-10-20's rule — unticked *under* the
+floor came back at the first reading ≥ 20%, unticked above stayed off for good
+(`LidAwake.floorWaivedUntilRecharge`, now removed on the first plug-in) — after
+an untick at 19% on the build just before that rule was still off the next
+morning at 100%: it had been recorded as a choice for good.
 
 **Four states since 2026-10-02: `Off` / `Claude` / `Claude/rc` / `Always`.**
 The first three are the old `off` / `interactive` / `background` renamed (the

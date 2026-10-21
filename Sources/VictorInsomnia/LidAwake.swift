@@ -79,33 +79,15 @@ enum LidAwakeSettings {
         set { UserDefaults.standard.set(newValue, forKey: sleepUnderFloorKey) }
     }
 
-    /// Set when the row was unticked under the floor — see
-    /// `LidAwakePolicy.waivesFloorUntilRecharge`. Stored, so a relaunch while
-    /// charging still puts the tick back.
-    static let floorWaivedKey = "LidAwake.floorWaivedUntilRecharge"
-
-    static var floorWaivedUntilRecharge: Bool {
-        get { UserDefaults.standard.bool(forKey: floorWaivedKey) }
-        set { UserDefaults.standard.set(newValue, forKey: floorWaivedKey) }
-    }
-
-    /// The menu click: tick or untick, remembering whether an untick was a
-    /// waiver for this discharge or a choice for good.
-    static func setSleepsUnderFloor(_ on: Bool, battery: Int?) {
-        sleepsUnderFloor = on
-        floorWaivedUntilRecharge = !on && LidAwakePolicy.waivesFloorUntilRecharge(untickedAt: battery)
-    }
-
-    /// Ticks the row again once a waived floor's battery is back at 20%;
-    /// `true` when it did. Asked by every tick and whenever the menu opens,
-    /// since the tick does not run while the mode is `Off`.
+    /// The charger went in: an unticked floor is ticked again
+    /// (`LidAwakePolicy.isPlugIn`); `true` when it was. Called from
+    /// `Power.onPlugIn`, so it works in every mode, `Off` included.
     @discardableResult
-    static func restoreFloorIfRecharged(battery: Int?) -> Bool {
-        guard !sleepsUnderFloor,
-              LidAwakePolicy.restoresFloor(waived: floorWaivedUntilRecharge, battery: battery) else { return false }
+    static func restoreFloorOnPlugIn(battery: Int?) -> Bool {
+        guard !sleepsUnderFloor else { return false }
         sleepsUnderFloor = true
-        floorWaivedUntilRecharge = false
-        insomniaInfo("LidAwake: battery back at \(battery ?? 0)% — Sleep under \(LidAwakePolicy.batteryFloorPercent)% ticked again")
+        UserDefaults.standard.removeObject(forKey: "LidAwake.floorWaivedUntilRecharge")
+        insomniaInfo("LidAwake: charger in at \(battery.map { "\($0)%" } ?? "?") — Sleep under \(LidAwakePolicy.batteryFloorPercent)% ticked again")
         return true
     }
 
@@ -503,7 +485,6 @@ final class LidAwake {
             + "\"on_ac\":\(Power.isOnAC()),"
             + "\"battery\":\(battery.map(String.init) ?? "null"),"
             + "\"sleeps_under_floor\":\(LidAwakeSettings.sleepsUnderFloor),"
-            + "\"floor_waived_until_recharge\":\(LidAwakeSettings.floorWaivedUntilRecharge),"
             + "\"working\":[\(working.map(String.init).joined(separator: ","))],"
             + "\"beating\":\(wasBeating),"
             + "\"beats\":\(beatCount),"
@@ -739,7 +720,6 @@ final class LidAwake {
 
         let battery = Self.batteryPercent()
         underFloor = LidAwakePolicy.isUnderFloor(battery)
-        LidAwakeSettings.restoreFloorIfRecharged(battery: battery)
         // Both halves are read every tick, whatever the mode, because the menu
         // bar shows both numbers (2026-10-13) — the /rc one included while
         // `Claude` is declining to hold the lid open for it.
