@@ -104,6 +104,7 @@ enum SleepChime {
     /// Sound it, blocking until done. Call from `LidAwake.sleepTone` with the
     /// Mac held awake — never from `willSleepNotification` (see above).
     static func sound() {
+        guard LidAwakeSettings.playsSounds else { return }
         if let last = LidAwake.lastFarewellAt, Date().timeIntervalSince(last) < afterFarewellQuiet {
             insomniaInfo("SleepChime: the flatline just ended in the tone — not repeating it")
             return

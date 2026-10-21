@@ -1063,6 +1063,22 @@ the row and lets the closed lid sleep the Mac the ordinary way.
   worse of the two mistakes.
 - The floor does not apply on AC: at 4% and plugged in the number is going up.
 
+## 💓 Sounds: the checkbox that mutes it all (2026-10-21)
+
+A row under "Sleep under 20%", **ticked by default**. Unticked, every sound
+this app makes is skipped at its source — the heartbeat and the three quick
+beats (`heartbeat()`), the 🫀 flatline (`lastBeats()`), the floor's Bassos
+(`beep`) and the sleep tone (`SleepChime.sound()`) — and the output is neither
+boosted nor unmuted (`boostForBeats(true)` behaves as `false`, so a boost
+already taken is given back on the next tick).
+
+Everything else is untouched: `LidAwakePolicy` decides the same, the flag goes
+up and down at the same moments, and the waits sized to the clips (the
+flatline's `farewellLength`) are kept, so the timing of a silent release is
+that of an audible one. The diagram does not change for that reason — it says
+*what* is heard; this switch only says whether anything is. Stored under
+`LidAwake.sounds`, shown as `"sounds"` in `/test/lid-awake/state`.
+
 ## Lifecycle
 
 - `LidAwakeSettings.isEnabled` is a `UserDefaults` bool, **default off**. Unlike

@@ -1,12 +1,13 @@
 import AppKit
 
 /// The 🛏 / ☕ / crossed-out 🛏 (+ 🪫) in the menu bar and its menu: the four modes, the battery
-/// floor, the 🛰️ Claude RC watchdog, Quit.
+/// floor, the 💓 sounds, the 🛰️ Claude RC watchdog, Quit.
 final class StatusMenu: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let menu = NSMenu()
     private var modeItems: [LidAwakeMode: NSMenuItem] = [:]
     private var floorItem: NSMenuItem!
+    private var soundsItem: NSMenuItem!
     private var remoteControlItem: NSMenuItem!
     private var quitItem: NSMenuItem!
     private let lid: LidAwake
@@ -31,6 +32,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
                                action: #selector(toggleFloor), keyEquivalent: "")
         floorItem.target = self
         menu.addItem(floorItem)
+        soundsItem = NSMenuItem(title: InsomniaMenu.soundsLabel,
+                                action: #selector(toggleSounds), keyEquivalent: "")
+        soundsItem.target = self
+        soundsItem.toolTip = InsomniaMenu.soundsTooltip
+        menu.addItem(soundsItem)
         remoteControlItem = NSMenuItem(title: InsomniaMenu.remoteControlLabel,
                                        action: #selector(toggleRemoteControl), keyEquivalent: "")
         remoteControlItem.target = self
@@ -70,6 +76,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         }
         titles.append((floorItem, InsomniaMenu.plain(InsomniaMenu.floorLabel),
                        LidAwakeSettings.sleepsUnderFloor ? InsomniaMenu.checkMark : ""))
+        titles.append((soundsItem, InsomniaMenu.plain(InsomniaMenu.soundsLabel),
+                       LidAwakeSettings.playsSounds ? InsomniaMenu.checkMark : ""))
         titles.append((remoteControlItem, InsomniaMenu.plain(InsomniaMenu.remoteControlLabel),
                        ClaudeRemoteControlSettings.isEnabled ? InsomniaMenu.checkMark : ""))
         titles.append((quitItem, InsomniaMenu.plain(InsomniaMenu.quitLabel), InsomniaMenu.quitHint))
@@ -118,6 +126,13 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         insomniaInfo("LidAwake: sleep under \(LidAwakePolicy.batteryFloorPercent)% "
             + (LidAwakeSettings.sleepsUnderFloor ? "on"
                : "off until the charger is plugged in"))
+        refresh()
+    }
+
+    /// Read at the next sound; the lid logic does not change.
+    @objc private func toggleSounds() {
+        LidAwakeSettings.playsSounds.toggle()
+        insomniaInfo("LidAwake: sounds " + (LidAwakeSettings.playsSounds ? "on" : "off"))
         refresh()
     }
 

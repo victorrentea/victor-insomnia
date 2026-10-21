@@ -137,6 +137,10 @@ enum InsomniaMenu {
     /// twenty"* — at 49% it was showing just for the tick).
     static func showsFloor(ticked: Bool, underFloor: Bool) -> Bool { ticked && underFloor }
 
+    static let soundsLabel = "💓 Sounds"
+    static let soundsTooltip = "The heartbeat under a shut lid, the flatline, the floor's beeps and the sleep tone. "
+        + "Unticked, the lid behaves the same, silently."
+
     static let quitLabel = "Quit"
     static let quitHint = "⌘Q"
     static let checkMark = "✓"

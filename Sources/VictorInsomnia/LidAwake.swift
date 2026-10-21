@@ -79,6 +79,18 @@ enum LidAwakeSettings {
         set { UserDefaults.standard.set(newValue, forKey: sleepUnderFloorKey) }
     }
 
+    /// **"💓 Sounds"** (2026-10-21, Victor), the checkbox that mutes everything
+    /// this app plays: the heartbeat, the 🫀 flatline, the floor's Bassos and
+    /// the sleep tone. **Default on.** Off, the lid logic is unchanged — only
+    /// silent — and the output is neither boosted nor unmuted, since there is
+    /// nothing to carry.
+    static let soundsKey = "LidAwake.sounds"
+
+    static var playsSounds: Bool {
+        get { UserDefaults.standard.object(forKey: soundsKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: soundsKey) }
+    }
+
     /// The charger went in: an unticked floor is ticked again
     /// (`LidAwakePolicy.isPlugIn`); `true` when it was. Called from
     /// `Power.onPlugIn`, so it works in every mode, `Off` included.
@@ -485,6 +497,7 @@ final class LidAwake {
             + "\"on_ac\":\(Power.isOnAC()),"
             + "\"battery\":\(battery.map(String.init) ?? "null"),"
             + "\"sleeps_under_floor\":\(LidAwakeSettings.sleepsUnderFloor),"
+            + "\"sounds\":\(LidAwakeSettings.playsSounds),"
             + "\"working\":[\(working.map(String.init).joined(separator: ","))],"
             + "\"beating\":\(wasBeating),"
             + "\"beats\":\(beatCount),"
@@ -942,7 +955,8 @@ final class LidAwake {
     /// `volumeBeforeBeats` nil and the beats simply play at whatever the machine
     /// is set to — the pulse is worth more than the level.
     private func boostForBeats(_ wanted: Bool) {
-        if wanted {
+        // Sounds off: nothing to carry, so a boost already taken is given back.
+        if wanted && LidAwakeSettings.playsSounds {
             // Never raise the volume onto something that is already playing.
             if let playing = PulseOutput.otherAppPlaying() {
                 if !boostRefused {
@@ -1038,6 +1052,7 @@ final class LidAwake {
     }
 
     private func heartbeat() {
+        guard LidAwakeSettings.playsSounds else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
 
@@ -1131,6 +1146,7 @@ final class LidAwake {
     /// end of a session, not 360 times an hour, and holding a decoded 72 KB file
     /// for hours to use it once is the waste the cache exists to avoid.
     private func lastBeats() {
+        guard LidAwakeSettings.playsSounds else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
 
@@ -1181,6 +1197,7 @@ final class LidAwake {
     }
 
     private func beep(named name: String, volume: Float = LidAwake.beepVolume) {
+        guard LidAwakeSettings.playsSounds else { return }
         DispatchQueue.main.async {
             // A fresh NSSound per beat: a shared instance that is still playing
             // ignores `play()`, which would silently swallow the second beat —
