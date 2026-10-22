@@ -8,10 +8,10 @@ enum InsomniaMenu {
     /// The mode's bare name, for the tooltip.
     static func name(_ mode: LidAwakeMode) -> String {
         switch mode {
-        case .off: return "Off"
+        case .off: return "Sleep on Lid Close"
         case .interactive: return "Claude"
         case .background: return "Claude /rc"
-        case .always: return "Always"
+        case .always: return "Never sleep"
         }
     }
 

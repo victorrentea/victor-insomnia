@@ -134,6 +134,10 @@ floor came back at the first reading ≥ 20%, unticked above stayed off for good
 an untick at 19% on the build just before that rule was still off the next
 morning at 100%: it had been recorded as a choice for good.
 
+**Renamed on the menu 2026-10-22:** `Off` reads **Sleep on Lid Close** and `Always`
+reads **Never sleep** (Victor) — only the words; the raw values (`off`, `always`), the
+`/mode/<m>` hooks and the rest of this doc keep the old names.
+
 **Four states since 2026-10-02: `Off` / `Claude` / `Claude/rc` / `Always`.**
 The first three are the old `off` / `interactive` / `background` renamed (the
 raw values in `UserDefaults` did not move, so nobody's mode changes on an

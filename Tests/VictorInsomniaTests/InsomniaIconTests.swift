@@ -88,7 +88,7 @@ final class InsomniaIconTests: XCTestCase {
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: false),
                        "Insomnia: Claude — no Claude working — the Mac may sleep")
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .off, holding: false),
-                       "Insomnia: Off — the Mac may sleep")
+                       "Insomnia: Sleep on Lid Close — the Mac may sleep")
     }
 
     /// 2026-10-14, Victor: hovering the digits should say what they count.
@@ -101,7 +101,7 @@ final class InsomniaIconTests: XCTestCase {
                        "Insomnia: Claude — holding the Mac awake for:\n"
                        + "• 1 Claude session working in a terminal")
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .always, holding: true, counts: .init(claude: 0, rc: 1)),
-                       "Insomnia: Always — holding the Mac awake no matter what")
+                       "Insomnia: Never sleep — holding the Mac awake no matter what")
     }
 
     func testTheTooltipExplainsTheBattery() {
