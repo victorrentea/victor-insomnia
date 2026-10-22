@@ -32,6 +32,17 @@ enum LidAwakePolicy {
     /// already on AC is not one, so an untick at the desk holds until the next.
     static func isPlugIn(wasOnAC: Bool, onAC: Bool) -> Bool { !wasOnAC && onAC }
 
+    /// **The plug-in also takes `Never sleep` back** (2026-10-22, Victor: the
+    /// floor goes back on *and* Never sleep goes back to Claude — to the mode it
+    /// was picked from, when that is known). `nil` when the mode is anything
+    /// else: only `always` is undone. A remembered `always`, or none at all
+    /// (picked on a build before this rule), lands on `Claude`.
+    static func modeOnPlugIn(current: LidAwakeMode, beforeAlways: LidAwakeMode?) -> LidAwakeMode? {
+        guard current == .always else { return nil }
+        guard let beforeAlways, beforeAlways != .always else { return .interactive }
+        return beforeAlways
+    }
+
     enum Action: String, CaseIterable, Equatable {
         /// A Claude is working, the lid is shut and we are on battery: hold the
         /// flag and sound the heartbeat.

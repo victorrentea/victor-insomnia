@@ -41,6 +41,8 @@ enum LidAwakeChangeSource: String {
     case menu, http, launch
     /// The 20% floor's own disarm, after the flatline.
     case batteryFloor = "battery floor"
+    /// The charger went in and took `Never sleep` back (`modeOnPlugIn`).
+    case plugIn = "charger in"
 }
 
 enum LidAwakeSettings {
@@ -101,6 +103,15 @@ enum LidAwakeSettings {
         UserDefaults.standard.removeObject(forKey: "LidAwake.floorWaivedUntilRecharge")
         insomniaInfo("LidAwake: charger in at \(battery.map { "\($0)%" } ?? "?") — Sleep under \(LidAwakePolicy.batteryFloorPercent)% ticked again")
         return true
+    }
+
+    /// The mode `Never sleep` was picked from, for the plug-in to go back to
+    /// (`LidAwakePolicy.modeOnPlugIn`). Written by `LidAwake.setMode` only.
+    static let modeBeforeAlwaysKey = "LidAwake.modeBeforeAlways"
+
+    static var modeBeforeAlways: LidAwakeMode? {
+        get { UserDefaults.standard.string(forKey: modeBeforeAlwaysKey).flatMap(LidAwakeMode.init) }
+        set { UserDefaults.standard.set(newValue?.rawValue, forKey: modeBeforeAlwaysKey) }
     }
 
     /// Sessions someone is typing at, recognised by their `caffeinate`.
@@ -386,9 +397,24 @@ final class LidAwake {
     /// Pick a mode from the menu: store it, then land in it.
     @discardableResult
     func setMode(_ mode: LidAwakeMode, source: LidAwakeChangeSource) -> Bool {
+        let previous = LidAwakeSettings.mode
+        if mode == .always, previous != .always { LidAwakeSettings.modeBeforeAlways = previous }
         LidAwakeSettings.mode = mode
         // The lub-dub only when there is a new state to prove, never on off.
         return apply(announce: mode != .off, source: source)
+    }
+
+    /// The charger went in: `Never sleep` goes back to the mode it was picked
+    /// from (`LidAwakePolicy.modeOnPlugIn`); `true` when it did. Silent — the
+    /// Mac is on the desk, there is nothing for a lub-dub to prove.
+    @discardableResult
+    func revertAlwaysOnPlugIn() -> Bool {
+        guard let back = LidAwakePolicy.modeOnPlugIn(current: LidAwakeSettings.mode,
+                                                     beforeAlways: LidAwakeSettings.modeBeforeAlways) else { return false }
+        insomniaInfo("LidAwake: charger in — Never sleep back to \(back.rawValue)")
+        LidAwakeSettings.mode = back
+        apply(announce: false, source: .plugIn)
+        return true
     }
 
     /// Arm or disarm. Returns whether the kernel agreed — a `false` means the

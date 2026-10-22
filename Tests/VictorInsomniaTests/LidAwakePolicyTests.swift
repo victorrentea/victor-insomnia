@@ -224,6 +224,19 @@ final class LidAwakePolicyTests: XCTestCase {
         XCTAssertFalse(LidAwakeSettings.restoreFloorOnPlugIn(battery: 100), "already ticked: nothing to do")
     }
 
+    /// 2026-10-22, Victor: on the plug-in Never sleep goes back to Claude, or to
+    /// the mode it was picked from.
+    func testThePlugInTakesNeverSleepBack() {
+        XCTAssertEqual(LidAwakePolicy.modeOnPlugIn(current: .always, beforeAlways: .background), .background)
+        XCTAssertEqual(LidAwakePolicy.modeOnPlugIn(current: .always, beforeAlways: .off), .off)
+        XCTAssertEqual(LidAwakePolicy.modeOnPlugIn(current: .always, beforeAlways: nil), .interactive,
+                       "picked on a build that did not remember: Claude")
+        XCTAssertEqual(LidAwakePolicy.modeOnPlugIn(current: .always, beforeAlways: .always), .interactive)
+        for mode in LidAwakeMode.allCases where mode != .always {
+            XCTAssertNil(LidAwakePolicy.modeOnPlugIn(current: mode, beforeAlways: .always), "\(mode) is left alone")
+        }
+    }
+
     func testFloorDoesNotApplyOnAC() {
         // Plugged in at 4%: the number is going up, and cutting the flag here
         // would sleep the Mac for no reason.

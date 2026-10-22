@@ -54,8 +54,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lid.onHoldingChanged = { [weak menu] _ in menu?.refresh() }
         lid.onCountsChanged = { [weak menu] _ in menu?.refresh() }
         lid.onUnderFloorChanged = { [weak menu] _ in menu?.refresh() }
-        Power.onPlugIn { [weak menu] in
-            if LidAwakeSettings.restoreFloorOnPlugIn(battery: LidAwake.batteryPercent()) { menu?.refresh() }
+        Power.onPlugIn { [weak menu, lid] in
+            let floor = LidAwakeSettings.restoreFloorOnPlugIn(battery: LidAwake.batteryPercent())
+            let mode = lid.revertAlwaysOnPlugIn()
+            if floor || mode { menu?.refresh() }
         }
         // The battery floor stood the feature down: the mode is `off` now.
         lid.onAutoDisabled = { [weak menu] pct in

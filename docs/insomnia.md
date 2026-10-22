@@ -134,6 +134,15 @@ floor came back at the first reading ≥ 20%, unticked above stayed off for good
 an untick at 19% on the build just before that rule was still off the next
 morning at 100%: it had been recorded as a choice for good.
 
+**The same plug-in takes `Never sleep` back** (2026-10-22, Victor: the floor
+ticks again *and* Never sleep goes back to Claude). It returns to the mode
+Never sleep was picked from — `LidAwake.setMode` stores it as
+`LidAwake.modeBeforeAlways` — or to `Claude` when that is unknown (picked on an
+older build); `LidAwakePolicy.modeOnPlugIn`, called from the same
+`Power.onPlugIn` handler through `LidAwake.revertAlwaysOnPlugIn`. Silent (no
+lub-dub: the Mac is at the desk) and logged with the source `charger in`. Any
+other mode is left alone.
+
 **Renamed on the menu 2026-10-22:** `Off` reads **Sleep on Lid Close** and `Always`
 reads **Never sleep** (Victor) — only the words; the raw values (`off`, `always`), the
 `/mode/<m>` hooks and the rest of this doc keep the old names.
