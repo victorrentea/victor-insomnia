@@ -104,6 +104,18 @@ final class InsomniaIconTests: XCTestCase {
                        "Insomnia: Never sleep — holding the Mac awake no matter what")
     }
 
+    /// 2026-10-26: macOS 26.7.1 wiped the sudoers rule; the cup still showed
+    /// a lime count and the tooltip blamed "no Claude working".
+    func testARefusedPmsetIsShoutedNotBlamedOnIdleSessions() {
+        let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 0)
+        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .interactive, refused: true), "!")
+        XCTAssertEqual(InsomniaMenu.iconTint(counts, mode: .interactive, refused: true), .remote)
+        XCTAssertEqual(InsomniaMenu.iconCounts(counts, mode: .off, refused: true), "")
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: false, counts: counts, refused: true),
+                       "Insomnia: Claude — ⚠️ CANNOT hold the Mac awake: pmset was refused\n"
+                       + "the sudoers rule is missing (a macOS update wipes it) — run ./install-sudoers.sh")
+    }
+
     func testTheTooltipExplainsTheBattery() {
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: false, floor: true),
                        "Insomnia: Claude — no Claude working — the Mac may sleep\n"

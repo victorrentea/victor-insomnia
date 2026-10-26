@@ -54,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lid.onHoldingChanged = { [weak menu] _ in menu?.refresh() }
         lid.onCountsChanged = { [weak menu] _ in menu?.refresh() }
         lid.onUnderFloorChanged = { [weak menu] _ in menu?.refresh() }
+        lid.onPmsetRefusedChanged = { [weak menu] _ in menu?.refresh() }
         Power.onPlugIn { [weak menu, lid] in
             let floor = LidAwakeSettings.restoreFloorOnPlugIn(battery: LidAwake.batteryPercent())
             let mode = lid.revertAlwaysOnPlugIn()

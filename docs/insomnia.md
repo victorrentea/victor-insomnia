@@ -238,8 +238,15 @@ arguments included, and nothing else:
 
 Install it with `./install-sudoers.sh` (it validates with `visudo -c` first — a
 broken sudoers file locks you out of `sudo`). Any file in `/etc/sudoers.d/`
-with that line works; on Victor's Mac it is still the one Victor Addons
-installed, `victor-addons-disablesleep`.
+with that line works.
+
+**A macOS update can wipe it.** The 26.7.1 update (2026-10-26) left
+`/etc/sudoers.d/` empty: the mode stayed ticked, every lid close logged
+`pmset refused while trying to set disablesleep=1`, and the Mac slept over two
+working sessions. Since then a refusal at any `hold` sets `pmsetRefused`, which
+puts a red `!` on the cup instead of the digits and a tooltip that names the
+missing rule. After an OS update, check `ls /etc/sudoers.d/` and re-run
+`./install-sudoers.sh`.
 
 `sudo` needs a tty, so this will not run from a non-interactive shell. From an
 agent, the working route is the native authorization dialog:

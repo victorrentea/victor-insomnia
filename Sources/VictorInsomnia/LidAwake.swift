@@ -319,6 +319,19 @@ final class LidAwake {
     /// Whether this app is holding the Mac awake right now, as the menu bar
     /// shows it.
     var isHolding: Bool { holding }
+    /// Set when the last `sudo -n pmset` was refused — in practice the sudoers
+    /// rule is gone (2026-10-26: the macOS 26.7.1 update emptied
+    /// `/etc/sudoers.d/`, and a lid shut over two working sessions slept the
+    /// Mac with nothing on screen to say why). The menu bar shows it.
+    private(set) var pmsetRefused = false {
+        didSet {
+            guard pmsetRefused != oldValue else { return }
+            let now = pmsetRefused
+            DispatchQueue.main.async { [weak self] in self?.onPmsetRefusedChanged?(now) }
+        }
+    }
+    /// Fires on the main queue whenever `pmsetRefused` flips.
+    var onPmsetRefusedChanged: ((Bool) -> Void)?
     /// The working sessions as of the last tick, split as the menu rows
     /// show them. `nil` until the first tick.
     private(set) var counts: ClaudeActivity.WorkingCounts? {
@@ -459,6 +472,7 @@ final class LidAwake {
             stopTimer()
             return false
         }
+        pmsetRefused = false
         holding = true
         insomniaInfo("LidAwake armed \(LidAwakeSettings.mode.rawValue) (\(source.rawValue)) — watching for working Claude sessions, "
             + (LidAwakeSettings.sleepsUnderFloor ? "floor \(LidAwakePolicy.batteryFloorPercent)%" : "no battery floor"))
@@ -910,9 +924,12 @@ final class LidAwake {
     private func hold(_ wanted: Bool) {
         guard wanted != holding else { return }
         guard Self.setSleepDisabled(wanted) else {
-            insomniaError("LidAwake: pmset refused while trying to set disablesleep=\(wanted ? 1 : 0)")
+            insomniaError("LidAwake: pmset refused while trying to set disablesleep=\(wanted ? 1 : 0)"
+                          + " — is the sudoers rule installed? (./install-sudoers.sh)")
+            pmsetRefused = true
             return
         }
+        pmsetRefused = false
         holding = wanted
         insomniaInfo(wanted
             ? "LidAwake: a Claude is working — holding the lid open"

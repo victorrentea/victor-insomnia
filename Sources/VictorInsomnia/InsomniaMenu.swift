@@ -109,7 +109,10 @@ enum InsomniaMenu {
     /// Nothing at all when none works, when the mode is `Off` — the bed says
     /// it alone — or `Always`, whose crossed-out bed has no coffee to carry them
     /// (2026-10-19).
-    static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> String {
+    static func iconCounts(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode,
+                           refused: Bool = false) -> String {
+        // A red `!` instead of digits: nothing is being held, whatever is working.
+        if refused, mode != .off { return "!" }
         guard mode.holdsInteractive, !mode.holdsRegardless, let counts else { return "" }
         let total = counts.claude + (mode.holdsRemote ? counts.rc : 0)
         return total > 0 ? "\(total)" : ""
@@ -118,7 +121,9 @@ enum InsomniaMenu {
     /// The colour of those digits: **red when every one of them is `/rc`** (2026-10-20, Victor: *"over
     /// the coffee if ever left only with /rc active"*), the menu's `/rc`
     /// colour; lime as soon as a terminal session is in the sum.
-    static func iconTint(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode) -> InsomniaIcon.DigitTint {
+    static func iconTint(_ counts: ClaudeActivity.WorkingCounts?, mode: LidAwakeMode,
+                         refused: Bool = false) -> InsomniaIcon.DigitTint {
+        if refused, mode != .off { return .remote }
         guard let counts, mode.holdsRemote, counts.claude == 0, counts.rc > 0 else { return .working }
         return .remote
     }
@@ -193,8 +198,14 @@ enum InsomniaMenu {
     /// The lines follow `iconCounts`, so a digit the icon hides is not
     /// explained either. The 🪫 beside the icon gets the last line.
     static func tooltip(mode: LidAwakeMode, holding: Bool,
-                        counts: ClaudeActivity.WorkingCounts? = nil, floor: Bool = false) -> String {
+                        counts: ClaudeActivity.WorkingCounts? = nil, floor: Bool = false,
+                        refused: Bool = false) -> String {
         let floorLine = floor ? ["\(floorEmoji) sleeps under \(LidAwakePolicy.batteryFloorPercent)% battery"] : []
+        if refused, mode != .off {
+            return (["Insomnia: \(name(mode)) — ⚠️ CANNOT hold the Mac awake: pmset was refused",
+                     "the sudoers rule is missing (a macOS update wipes it) — run ./install-sudoers.sh"]
+                    + floorLine).joined(separator: "\n")
+        }
         guard holding else {
             let why = mode.holdsInteractive && !mode.holdsRegardless ? "no Claude working — " : ""
             return (["Insomnia: \(name(mode)) — \(why)the Mac may sleep"] + floorLine).joined(separator: "\n")

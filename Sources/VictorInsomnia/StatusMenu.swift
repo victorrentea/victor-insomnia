@@ -53,16 +53,20 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     }
 
     /// Repaint everything from the truth: the stored mode and the held flag.
-    func refresh() {
+    /// `counts` overrides the last tick's — the menu passes a fresh read on
+    /// open, so the digits on the cup and the ×N in the rows agree.
+    func refresh(counts fresh: ClaudeActivity.WorkingCounts? = nil) {
         let mode = LidAwakeSettings.mode
         let holding = lid.isHolding
-        let digits = InsomniaMenu.iconCounts(lid.counts, mode: mode)
-        let tint = InsomniaMenu.iconTint(lid.counts, mode: mode)
+        let refused = lid.pmsetRefused
+        let counts = fresh ?? lid.counts
+        let digits = InsomniaMenu.iconCounts(counts, mode: mode, refused: refused)
+        let tint = InsomniaMenu.iconTint(counts, mode: mode, refused: refused)
         let floor = InsomniaMenu.showsFloor(ticked: LidAwakeSettings.sleepsUnderFloor, underFloor: lid.underFloor)
         statusItem.button?.image = InsomniaIcon.look(mode: mode).image(digits: digits, tint: tint, floor: floor)
         statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding,
-                                                            counts: lid.counts, floor: floor)
-        layOutRows(counts: lid.counts)
+                                                            counts: counts, floor: floor, refused: refused)
+        layOutRows(counts: counts)
     }
 
     /// Every row's title, with the ✓ / ⌘Q column on one tab stop measured
@@ -89,8 +93,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         menuIsOpen = true
-        refresh()
-        layOutRows(counts: ClaudeActivity.workingCounts())
+        refresh(counts: ClaudeActivity.workingCounts())
     }
 
     func menuDidClose(_ menu: NSMenu) { menuIsOpen = false }
