@@ -35,12 +35,15 @@ if [ "${SKIP_TESTS:-0}" != "1" ]; then
 fi
 
 if [ "${UNIVERSAL:-0}" = "1" ]; then
-    swift build -c "$BUILD_CONFIG" --arch arm64 --arch x86_64
-    BINARY="$DIR/.build/apple/Products/Release/VictorInsomnia"
+    ARCH_FLAGS=(--arch arm64 --arch x86_64)
 else
-    swift build -c "$BUILD_CONFIG"
-    BINARY="$DIR/.build/arm64-apple-macosx/$BUILD_CONFIG/VictorInsomnia"
+    ARCH_FLAGS=()
 fi
+swift build -c "$BUILD_CONFIG" "${ARCH_FLAGS[@]}"
+# Asked of SwiftPM, never spelled out: Swift 6.4 moved the output to
+# .build/out/Products/Release, and the old hard-coded path kept installing the
+# last binary built there (Oct 22) while every build since went unshipped.
+BINARY="$(swift build -c "$BUILD_CONFIG" "${ARCH_FLAGS[@]}" --show-bin-path)/VictorInsomnia"
 
 rm -rf "$APP_DIR"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
