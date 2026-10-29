@@ -494,6 +494,28 @@ final class ClaudeHelperTests: XCTestCase {
         XCTAssertEqual(caffeinated([terminal(500, status: "busy", changed: 3_600)]), [500])
     }
 
+    /// 2.1.312, measured 2026-10-29: the `--sdk-url` sessions the
+    /// remote-control host spawns hold a `caffeinate` of their own. They are
+    /// the `/rc` half's, never this one's — or `Claude` holds the lid for the
+    /// phone and the menu counts them as terminals.
+    func testARemoteControlSessionHoldingACaffeinateIsNotATerminalOne() {
+        let remote = SessionPresence(pid: 500, sessionId: "s500", cwd: "/Users/v/workspace", entrypoint: "sdk-cli",
+                                     status: "busy", statusUpdatedAt: Date())
+        let procs = [RunningProcess(pid: 500, ppid: 1, name: "2.1.312"),
+                     RunningProcess(pid: 501, ppid: 500, name: "caffeinate")]
+        func working(_ argv: [String]) -> [Int32] {
+            ClaudeActivity.workingSessions(
+                in: procs,
+                executablePath: { _ in "/Users/v/.local/share/claude/versions/2.1.312" },
+                presence: { $0 == 500 ? remote : nil },
+                arguments: { _ in argv })
+        }
+        XCTAssertEqual(working(["2.1.312", "--print", "--sdk-url", "https://api.anthropic.com/v1/code/sessions/x"]), [])
+        // A headless `claude -p` from another app writes `sdk-cli` too and
+        // stays a caffeinate session, as before.
+        XCTAssertEqual(working(["claude", "-p", "--input-format", "stream-json"]), [500])
+    }
+
     /// CodexBar's usage probe, as measured on 2026-10-14: `waiting` from its
     /// first second, a `caffeinate` held all ~17 s of its life. It put a `1`
     /// on the icon and the Mac slept under it.

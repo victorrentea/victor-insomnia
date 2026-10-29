@@ -106,6 +106,7 @@ enum ClaudeActivity {
                                executablePath: executablePath(of:),
                                helperKind: helperKind(of:),
                                presence: { presence[$0] },
+                               arguments: arguments(of:),
                                now: Date())
     }
 
@@ -127,15 +128,26 @@ enum ClaudeActivity {
         !workingSessions(in: procs, executablePath: executablePath, helperKind: helperKind).isEmpty
     }
 
+    /// **A remote-control session holds a `caffeinate` too** (measured on
+    /// 2.1.312, 2026-10-29): all four working sessions had one, the two
+    /// `--sdk-url` ones included, and the menu read `Claude×3` with two of the
+    /// three on the phone — the `/rc` half was subtracted away as already
+    /// counted. Worse, `Claude` alone held the lid open for the phone, the very
+    /// thing that mode declines. So a session the remote-control host drives
+    /// is never this half's, whatever it holds; `remoteWorkingSessions` has it.
     static func workingSessions(
         in procs: [RunningProcess],
         executablePath: (Int32) -> String?,
         helperKind: (Int32) -> String? = { _ in nil },
         presence: (Int32) -> SessionPresence? = { _ in nil },
+        arguments: (Int32) -> [String]? = { _ in nil },
         now: Date = Date()
     ) -> [Int32] {
         caffeinatedSessions(in: procs, executablePath: executablePath, helperKind: helperKind)
-            .filter { isBusy(presence($0), now: now) }
+            .filter { pid in
+                guard let session = presence(pid) else { return true }
+                return !isRemoteControlled(session, arguments: arguments) && isBusy(session, now: now)
+            }
     }
 
     /// Every real session holding a `caffeinate`, before its status is asked.
@@ -316,7 +328,7 @@ enum ClaudeActivity {
         }
     }
 
-    // MARK: - Sessions driven from the phone, which never spawn a `caffeinate`
+    // MARK: - Sessions driven from the phone, judged without their `caffeinate`
 
     /// **Everything above reads the process table, and the process table cannot
     /// see a remote session working.** Measured 2026-09-21, and it is why this

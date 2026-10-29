@@ -373,6 +373,13 @@ Why, measured on 2026-09-21:
 - So `isClaudeWorking()` said false, `LidAwake` released the flag, and the lid
   decided the rest. Battery and lid had nothing to do with it; the *signal* was
   missing.
+- **No longer true by 2.1.312** (2026-10-29): the `--sdk-url` sessions hold a
+  `caffeinate` of their own now. Left alone, that put them in the terminal half
+  too — the menu read `Claude×3` with two of the three on the phone (the `/rc`
+  half is subtracted from what `Claude` already counted), and `Claude` alone
+  held the lid open for the phone. `interactiveWorkingSessions` now drops every
+  session `isRemoteControlled`, whatever it holds; the transcript/status rule
+  below stays the only judge of a remote session.
 
 **The transcript is the second signal, and was the first one shipped.** Claude Code appends to
 `~/.claude/projects/<slug>/<sessionId>.jsonl` on every message — each assistant

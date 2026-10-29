@@ -754,7 +754,7 @@ final class LidAwake {
 
     /// The sessions this mode is willing to stay up for.
     ///
-    /// `interactive` deliberately asks only the process table: a phone-driven
+    /// `interactive` deliberately leaves out every remote-control session: a phone-driven
     /// session is exactly what that mode is declining to hold the lid open for.
     private func workingNow() -> [Int32] {
         workingNow(interactive: LidAwakeSettings.interactiveIsEnabled ? ClaudeActivity.interactiveWorkingSessions() : [],
