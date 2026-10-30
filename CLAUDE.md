@@ -28,3 +28,8 @@ Re-render with `plantuml -tsvg docs/lid-close.puml`.
   Addons 2026-10-16): [docs/claude-remote-control.md](docs/claude-remote-control.md).
 - Talks to Victor Addons (55123) for one thing only, `/chrome/audible`, and
   works without it.
+
+## Memoria lui Claude
+
+Memoria generală (cine e Victor, cum vrea să lucrezi) e în repo-ul privat `victorrentea/assistant`.
+Într-o sesiune din cloud, atașează-l la sesiune și urmează-i `CLAUDE.md`-ul. Pe Mac se încarcă singură.
