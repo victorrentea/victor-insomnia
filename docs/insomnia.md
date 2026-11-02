@@ -63,7 +63,7 @@ describes the runtime, which moved unchanged:
   `menuHasKeyEquivalent` while the menu is open. `swift test --filter
   InsomniaMenuTests` leaves `insomnia-menu-{light,dark}.png` in `$TMPDIR`.
 - **The menu** is the four modes (✓ in the right column, working counts read as it
-  opens — `☕ Claude×7`, `☕ Claude×7 + /rc×1/3` since 2026-10-16, the name
+  opens — `☕ Claude×2/7`, `☕ Claude×2/7 + /rc×1/3` since 2026-11-02, the name
   first and its count after; `/rc` is **working of open**: 1 session busy from
   the phone out of 3 alive, idle ones included (`ClaudeActivity.openRemoteSessions`,
   `WorkingCounts.rcOpen`). **A remote session is an `sdk-cli` one whose argv
@@ -71,10 +71,15 @@ describes the runtime, which moved unchanged:
   Walkie Talkie's agent and other `claude -p` clients write `sdk-cli` too and
   read as `/rc×0/7` with 4 phone sessions open until this check
   (`ClaudeActivity.isRemoteControlled`, argv via `KERN_PROCARGS2`). It applies
-  to what `Claude /rc` holds the lid for as well. A zero drops its `×N` but not the word (`Claude +
-  /rc×1/3`); `/rc` goes bare only with no remote session open, since `×0/3`
-  still says three are there. Working counts green — the `/rc` one red since
-  2026-10-20, the coffee's colour for an all-`/rc` sum — `×` and `/open` gray),
+  to what `Claude /rc` holds the lid for as well. **Since 2026-11-02 `Claude`
+  is working of open too and both always show**, zeros included:
+  `☕ Claude×0/7 + /rc×0/2` (Victor: *"Claude followed by × 0/7 if I have 7
+  instances open, with 0 working"*). Open terminals are the live `cli`
+  presence files (`ClaudeActivity.openTerminalSessions`,
+  `WorkingCounts.claudeOpen`) — not every non-remote one, since a headless
+  `claude -p` writes `sdk-cli`. Until then a zero dropped its `×N`. Working
+  counts green — the `/rc` one red since 2026-10-20, the coffee's colour for
+  an all-`/rc` sum — **gray when zero**; `×` and `/open` always gray),
   `Sleep under 20%`, `🛰️ Claude RC` (docs/claude-remote-control.md), and Quit. **Quit clears the flag**
   (`LidAwake.releaseForQuit`): a `SleepDisabled` nobody watches is a Mac that
   never sleeps again. A `pkill` does not — the rebuild loop relaunches within a

@@ -32,7 +32,7 @@ final class InsomniaMenuTests: XCTestCase {
     }
 
     func testTheColumnIsOneRightTabStopJustPastTheLongestTitle() {
-        let titles = [Menu.plain("☕ Claude×12 + /rc×3/12"), Menu.plain(Menu.floorLabel), Menu.plain(Menu.quitLabel)]
+        let titles = [Menu.plain("☕ Claude×12/30 + /rc×3/12"), Menu.plain(Menu.floorLabel), Menu.plain(Menu.quitLabel)]
         let stop = Menu.tabStop(titles: titles)
         let longest = titles.map { $0.size().width }.max()!
         XCTAssertGreaterThan(stop, longest + Menu.columnGap)
@@ -48,7 +48,7 @@ final class InsomniaMenuTests: XCTestCase {
     func testTheMenuIsNarrowerThanWithTheNativeColumns() {
         // The native check gutter and ⌘Q column cost ~20 + ~47 pt; the drawn
         // column costs one gap and one ⌘Q.
-        let titles = [Menu.plain("☕ Claude×12 + /rc×3/12"), Menu.plain(Menu.floorLabel), Menu.plain(Menu.quitLabel)]
+        let titles = [Menu.plain("☕ Claude×12/30 + /rc×3/12"), Menu.plain(Menu.floorLabel), Menu.plain(Menu.quitLabel)]
         let longest = titles.map { $0.size().width }.max()!
         XCTAssertLessThan(Menu.tabStop(titles: titles) - longest, 47)
     }
@@ -56,7 +56,7 @@ final class InsomniaMenuTests: XCTestCase {
     /// Renders the menu rows in light and dark into `$TMPDIR/insomnia-menu-*.png`
     /// to eyeball, and checks the ✓ is visible on both.
     func testRendersTheMenuForEyeballing() throws {
-        let counts = ClaudeActivity.WorkingCounts(claude: 1, rc: 1, rcOpen: 3)
+        let counts = ClaudeActivity.WorkingCounts(claude: 0, rc: 1, rcOpen: 3, claudeOpen: 7)
         var rows: [(NSAttributedString, String)] = LidAwakeMode.allCases.map {
             (Menu.attributedLabel($0, counts: counts), $0 == .background ? Menu.checkMark : "")
         }
@@ -94,35 +94,44 @@ final class InsomniaMenuTests: XCTestCase {
 
     // MARK: - Working counts (2026-10-08)
 
-    func testTheClaudeRowsCarryTheirWorkingCountsAfterTheName() {
-        // Victor, 2026-10-16: "Claude×1 + /rc×1/3" — /rc is working of open;
-        // a zero drops its ×N but keeps the word.
-        let counts = ClaudeActivity.WorkingCounts(claude: 7, rc: 1, rcOpen: 3)
-        XCTAssertEqual(Menu.label(.interactive, counts: counts), "☕ Claude×7")
-        XCTAssertEqual(Menu.label(.background, counts: counts), "☕ Claude×7 + /rc×1/3")
+    func testTheClaudeRowsCarryWorkingOverOpenAfterTheName() {
+        // Victor, 2026-11-02: "Claude + /rc × 0/2", "Claude followed by × 0/7
+        // if I have 7 instances open, with 0 working" — both counts always.
+        let counts = ClaudeActivity.WorkingCounts(claude: 2, rc: 1, rcOpen: 3, claudeOpen: 7)
+        XCTAssertEqual(Menu.label(.interactive, counts: counts), "☕ Claude×2/7")
+        XCTAssertEqual(Menu.label(.background, counts: counts), "☕ Claude×2/7 + /rc×1/3")
         XCTAssertEqual(Menu.label(.off, counts: counts), "🛌 Sleep on Lid Close")
         XCTAssertEqual(Menu.label(.always, counts: counts), "⚠️ Never sleep")
         XCTAssertEqual(Menu.label(.background, counts: nil), "☕ Claude /rc")
         XCTAssertEqual(Menu.label(.interactive, counts: nil), "☕ Claude")
-        XCTAssertEqual(Menu.label(.interactive, counts: .init(claude: 0, rc: 4, rcOpen: 4)), "☕ Claude")
-        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 0, rc: 1, rcOpen: 1)), "☕ Claude + /rc×1/1")
-        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 7, rc: 0, rcOpen: 3)), "☕ Claude×7 + /rc×0/3",
-                       "three open from the phone is worth saying even with none working")
-        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 7, rc: 0, rcOpen: 0)), "☕ Claude×7 + /rc")
-        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 0, rc: 0)), "☕ Claude + /rc")
-        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 0, rc: 2, rcOpen: 0)), "☕ Claude + /rc×2/2",
+        XCTAssertEqual(Menu.label(.interactive, counts: .init(claude: 0, rc: 0, rcOpen: 2, claudeOpen: 7)),
+                       "☕ Claude×0/7")
+        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 0, rc: 0, rcOpen: 2, claudeOpen: 7)),
+                       "☕ Claude×0/7 + /rc×0/2")
+        XCTAssertEqual(Menu.label(.background, counts: .init()), "☕ Claude×0/0 + /rc×0/0")
+        XCTAssertEqual(Menu.label(.background, counts: .init(claude: 3, rc: 2)), "☕ Claude×3/3 + /rc×2/2",
                        "never fewer open than working")
     }
 
+    func testAZeroWorkingCountIsGray() {
+        let row = Menu.attributedLabel(.background, counts: .init(claude: 0, rc: 0, rcOpen: 2, claudeOpen: 7))
+        XCTAssertEqual(row.string, "☕ Claude×0/7 + /rc×0/2")
+        let text = row.string as NSString
+        func colour(at i: Int) -> NSColor? { row.attribute(.foregroundColor, at: i, effectiveRange: nil) as? NSColor }
+        XCTAssertEqual(colour(at: text.range(of: "0/7").location), NSColor.secondaryLabelColor)
+        XCTAssertEqual(colour(at: text.range(of: "0/2").location), NSColor.secondaryLabelColor)
+    }
+
     func testTheWorkingCountsAreGreenTheRcOneRedTheRestGray() {
-        let row = Menu.attributedLabel(.background, counts: .init(claude: 12, rc: 3, rcOpen: 5))
-        XCTAssertEqual(row.string, "☕ Claude×12 + /rc×3/5")
+        let row = Menu.attributedLabel(.background, counts: .init(claude: 12, rc: 3, rcOpen: 5, claudeOpen: 20))
+        XCTAssertEqual(row.string, "☕ Claude×12/20 + /rc×3/5")
         let text = row.string as NSString
         func colour(at i: Int) -> NSColor? { row.attribute(.foregroundColor, at: i, effectiveRange: nil) as? NSColor }
         XCTAssertEqual(colour(at: text.range(of: "12").location), InsomniaIcon.countGreen)
         XCTAssertEqual(colour(at: text.range(of: "12").location + 1), InsomniaIcon.countGreen)
         XCTAssertEqual(colour(at: text.range(of: "3").location), InsomniaIcon.remoteRed)
         XCTAssertEqual(colour(at: text.range(of: "/5").location), NSColor.secondaryLabelColor)
+        XCTAssertEqual(colour(at: text.range(of: "/20").location), NSColor.secondaryLabelColor)
         XCTAssertEqual(colour(at: text.range(of: "×").location), NSColor.secondaryLabelColor)
         XCTAssertNil(colour(at: text.range(of: "/rc").location))
     }
@@ -140,13 +149,18 @@ final class InsomniaMenuTests: XCTestCase {
     /// session answering both signals is counted once, under `Claude`.
     func testWorkingCountsNeverCountASessionTwice() {
         XCTAssertEqual(ClaudeActivity.workingCounts(interactive: [10, 11], remote: [11, 20]),
-                       ClaudeActivity.WorkingCounts(claude: 2, rc: 1, rcOpen: 1))
+                       ClaudeActivity.WorkingCounts(claude: 2, rc: 1, rcOpen: 1, claudeOpen: 2))
         XCTAssertEqual(ClaudeActivity.workingCounts(interactive: [], remote: []),
                        ClaudeActivity.WorkingCounts(claude: 0, rc: 0))
         // Open counts every remote session alive, working or not, and never
         // one already under Claude.
         XCTAssertEqual(ClaudeActivity.workingCounts(interactive: [10, 11], remote: [11, 20], remoteOpen: [11, 20, 21, 22]),
-                       ClaudeActivity.WorkingCounts(claude: 2, rc: 1, rcOpen: 3))
+                       ClaudeActivity.WorkingCounts(claude: 2, rc: 1, rcOpen: 3, claudeOpen: 2))
+        // Terminal open: every live terminal session, working ones included,
+        // never a remote one.
+        XCTAssertEqual(ClaudeActivity.workingCounts(interactive: [10, 11], remote: [11, 20],
+                                                    remoteOpen: [11, 20, 21], terminalOpen: [10, 12, 13, 21]),
+                       ClaudeActivity.WorkingCounts(claude: 2, rc: 1, rcOpen: 2, claudeOpen: 4))
     }
 
     /// The `3` of `/rc×1/3`: phone sessions whose process is still a claude,
@@ -162,6 +176,9 @@ final class InsomniaMenuTests: XCTestCase {
                                       2: "/Users/x/.local/share/claude/versions/2.1.301",
                                       3: "/Users/x/.local/share/claude/versions/2.1.301"]
         XCTAssertEqual(ClaudeActivity.openRemoteSessions(in: sessions, executablePath: { paths[$0] }), [1, 2])
+        XCTAssertEqual(ClaudeActivity.openTerminalSessions(in: sessions + [session(5, "cli", "busy")],
+                                                           executablePath: { paths[$0] }), [3],
+                       "the 7 of Claude×0/7: live cli sessions only, a dead pid's file is not one")
 
         // A headless `claude -p` from another app writes `sdk-cli` too; only
         // the remote-control host's children carry `--sdk-url`.

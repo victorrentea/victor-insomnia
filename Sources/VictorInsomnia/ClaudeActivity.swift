@@ -388,18 +388,42 @@ enum ClaudeActivity {
         /// Remote sessions alive, idle ones included — the `3` of `/rc×1/3`
         /// (2026-10-16). Shown, never held for.
         var rcOpen = 0
+        /// Terminal sessions alive, idle ones included — the `7` of
+        /// `Claude×0/7` (2026-11-02). Shown, never held for.
+        var claudeOpen = 0
     }
 
     static func workingCounts() -> WorkingCounts {
-        workingCounts(interactive: interactiveWorkingSessions(), remote: remoteWorkingSessions(),
-                      remoteOpen: openRemoteSessions())
+        let presence = sessionPresence()
+        return workingCounts(interactive: interactiveWorkingSessions(), remote: remoteWorkingSessions(),
+                             remoteOpen: openRemoteSessions(in: presence, executablePath: executablePath(of:),
+                                                            arguments: arguments(of:)),
+                             terminalOpen: openTerminalSessions(in: presence, executablePath: executablePath(of:)))
     }
 
-    static func workingCounts(interactive: [Int32], remote: [Int32], remoteOpen: [Int32] = []) -> WorkingCounts {
+    static func workingCounts(interactive: [Int32], remote: [Int32], remoteOpen: [Int32] = [],
+                              terminalOpen: [Int32] = []) -> WorkingCounts {
         let claude = Set(interactive)
         let rc = Set(remote).subtracting(claude)
-        return WorkingCounts(claude: claude.count, rc: rc.count,
-                             rcOpen: Set(remoteOpen).subtracting(claude).union(rc).count)
+        let rcOpen = Set(remoteOpen).subtracting(claude).union(rc)
+        return WorkingCounts(claude: claude.count, rc: rc.count, rcOpen: rcOpen.count,
+                             claudeOpen: Set(terminalOpen).subtracting(rcOpen).union(claude).count)
+    }
+
+    /// The terminal sessions alive, working or not: every `cli` presence file
+    /// whose pid is still a `claude`. Not every non-remote one — a headless
+    /// `claude -p` from another app writes `sdk-cli` too and is no terminal
+    /// anyone has open. `workingCounts` unions the working ones back in, so
+    /// `Claude×4/3` cannot happen.
+    static func openTerminalSessions(in sessions: [SessionPresence],
+                                     executablePath: (Int32) -> String?) -> [Int32] {
+        sessions.filter { session in
+            guard session.entrypoint == terminalEntrypoint,
+                  let path = executablePath(session.pid) else { return false }
+            return isClaudeExecutable(path: path)
+        }
+        .map(\.pid)
+        .sorted()
     }
 
     /// The remote sessions alive, working or not: every `sdk-cli` presence
@@ -557,6 +581,9 @@ enum ClaudeActivity {
     }
 
     static let remoteControlFlag = "--sdk-url"
+
+    /// What a session started in a terminal writes as its `entrypoint`.
+    static let terminalEntrypoint = "cli"
 
     /// A process's argv, via `KERN_PROCARGS2` — what `ps -o command=` prints.
     /// `nil` when the kernel refuses (another user's process, a dead pid).

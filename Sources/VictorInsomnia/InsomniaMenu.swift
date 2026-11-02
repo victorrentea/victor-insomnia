@@ -28,22 +28,21 @@ enum InsomniaMenu {
     static func label(_ mode: LidAwakeMode) -> String { "\(emoji(mode)) \(name(mode))" }
 
     /// The rows with the count of sessions **working** right now — the ones
-    /// that would actually keep the laptop from sleeping. Each row names what
-    /// it holds, then its count (2026-10-16, Victor: *"Claude×1 + /rc×1/3"*,
-    /// reversing 2026-10-14's `7×Claude + 1×/rc`): `Claude×7`, and
-    /// `Claude×7 + /rc×1/3` because that mode holds both — **`/rc` carries
-    /// working of open**, the sessions busy from the phone over every phone
-    /// session still alive, idle ones included. A zero drops its `×N` but keeps
-    /// the word: `Claude + /rc×1/3`; `/rc` goes bare only with no remote session
-    /// open at all, since `×0/3` still says three are there. `nil` counts leave
-    /// the bare words.
+    /// that would actually keep the laptop from sleeping — **over the ones
+    /// open**, idle included: `Claude×0/7`, and `Claude×0/7 + /rc×1/3` because
+    /// that mode holds both (2026-11-02, Victor: *"Claude + /rc × 0/2… Claude
+    /// followed by × 0/7 if I have 7 instances open, with 0 working"*). Until
+    /// then a zero dropped its `×N` and `Claude` carried no open count. Both
+    /// counts always show now, `×0/0` included; a zero working count is gray,
+    /// so it reads as nothing at a glance. `nil` counts leave the bare words.
     static func label(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> String {
         labelParts(mode, counts: counts).map(\.text).joined()
     }
 
     /// The row in pieces, so the digits can be coloured without searching the
     /// string for them: `.count` marks a working count, `.dim` the `×` before
-    /// it and the `/open` after it, in gray, `.remote` the `/rc` one.
+    /// it and the `/open` after it, in gray, `.remote` the `/rc` one. A zero
+    /// count is gray as well.
     private enum Part { case plain(String), count(Int), remote(Int), dim(String), sleepless
         var text: String {
             switch self {
@@ -57,13 +56,10 @@ enum InsomniaMenu {
     private static func labelParts(_ mode: LidAwakeMode, counts: ClaudeActivity.WorkingCounts?) -> [Part] {
         if mode == .always { return [.sleepless, .plain(" \(name(mode))")] }
         guard let counts, mode == .interactive || mode == .background else { return [.plain(label(mode))] }
-        var parts: [Part] = [.plain("\(emoji(mode)) Claude")]
-        if counts.claude > 0 { parts += [.dim("×"), .count(counts.claude)] }
+        var parts: [Part] = [.plain("\(emoji(mode)) Claude"), .dim("×"), .count(counts.claude),
+                             .dim("/\(max(counts.claudeOpen, counts.claude))")]
         guard mode == .background else { return parts }
-        parts.append(.plain(" + /rc"))
-        let open = max(counts.rcOpen, counts.rc)
-        if open > 0 { parts += [.dim("×"), .remote(counts.rc), .dim("/\(open)")] }
-        return parts
+        return parts + [.plain(" + /rc"), .dim("×"), .remote(counts.rc), .dim("/\(max(counts.rcOpen, counts.rc))")]
     }
 
     /// The same row with its working counts in the icon's green (2026-10-13,
@@ -79,6 +75,7 @@ enum InsomniaMenu {
         for part in labelParts(mode, counts: counts) {
             var attributes: [NSAttributedString.Key: Any] = [.font: font]
             switch part {
+            case .count(0), .remote(0): attributes[.foregroundColor] = NSColor.secondaryLabelColor
             case .count: attributes[.foregroundColor] = InsomniaIcon.countGreen
             case .remote: attributes[.foregroundColor] = InsomniaIcon.remoteRed
             case .dim: attributes[.foregroundColor] = NSColor.secondaryLabelColor
