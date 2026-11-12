@@ -93,6 +93,18 @@ enum LidAwakeSettings {
         set { UserDefaults.standard.set(newValue, forKey: soundsKey) }
     }
 
+    /// **"🔌 Awake on AC"** (2026-11-13, Victor), the checkbox that keeps the
+    /// Mac up under a shut lid **while the charger is in**, whatever the mode
+    /// and whatever is (not) running — see `LidAwakePolicy.decide`.
+    /// **Default off**: on AC the lid sleeps the Mac unless the mode holds it,
+    /// as it always did. On battery this decides nothing.
+    static let awakeOnACKey = "LidAwake.awakeOnAC"
+
+    static var staysAwakeOnAC: Bool {
+        get { UserDefaults.standard.bool(forKey: awakeOnACKey) }
+        set { UserDefaults.standard.set(newValue, forKey: awakeOnACKey) }
+    }
+
     /// The charger went in: an unticked floor is ticked again
     /// (`LidAwakePolicy.isPlugIn`); `true` when it was. Called from
     /// `Power.onPlugIn`, so it works in every mode, `Off` included.
@@ -128,6 +140,10 @@ enum LidAwakeSettings {
         get { mode != .off }
         set { mode = newValue ? .background : .off }
     }
+
+    /// Whether the timer has anything to decide: an armed mode, or the
+    /// charger tick, which holds the lid in `Off` too.
+    static var isWatching: Bool { isEnabled || staysAwakeOnAC }
 }
 
 /// Keeps the Mac running with the **lid shut, on battery, with nothing plugged
@@ -401,7 +417,7 @@ final class LidAwake {
         // The lid is watched whatever the mode: "a lid close always makes a
         // sound" does not depend on 😴 being armed. See `lidClosed`.
         watchLid()
-        guard LidAwakeSettings.isEnabled else { return }
+        guard LidAwakeSettings.isWatching else { return }
         // `apply`, not `setMode`: re-arming must not write the mode back, or a
         // launch would quietly promote `interactive` to `background`.
         apply(announce: false, source: .launch)
@@ -430,6 +446,15 @@ final class LidAwake {
         return true
     }
 
+    /// Tick or untick "🔌 Awake on AC" and land in it now. Silent: the Mac is
+    /// on the desk or about to be, there is nothing for a lub-dub to prove.
+    @discardableResult
+    func setAwakeOnAC(_ on: Bool, source: LidAwakeChangeSource) -> Bool {
+        LidAwakeSettings.staysAwakeOnAC = on
+        insomniaInfo("LidAwake: awake on AC \(on ? "on" : "off") (\(source.rawValue))")
+        return apply(announce: false, source: source)
+    }
+
     /// Arm or disarm. Returns whether the kernel agreed — a `false` means the
     /// sudoers rule is missing and the caller must not tick the row.
     ///
@@ -448,7 +473,8 @@ final class LidAwake {
     /// touching the mode itself.
     @discardableResult
     private func apply(announce: Bool, source: LidAwakeChangeSource) -> Bool {
-        let enabled = LidAwakeSettings.isEnabled
+        // Watching, not just armed: the charger tick keeps the timer in `Off`.
+        let enabled = LidAwakeSettings.isWatching
         // The flag can already be up from before an app restart, so start from
         // what the kernel says rather than from an assumption.
         holding = Self.isSleepDisabled()
@@ -468,6 +494,7 @@ final class LidAwake {
         guard Self.setSleepDisabled(true) else {
             insomniaError("LidAwake: pmset refused (\(source.rawValue)) — is the disablesleep sudoers rule installed? (./install-sudoers.sh)")
             LidAwakeSettings.isEnabled = false
+            LidAwakeSettings.staysAwakeOnAC = false
             boostForBeats(false)
             stopTimer()
             return false
@@ -475,7 +502,8 @@ final class LidAwake {
         pmsetRefused = false
         holding = true
         insomniaInfo("LidAwake armed \(LidAwakeSettings.mode.rawValue) (\(source.rawValue)) — watching for working Claude sessions, "
-            + (LidAwakeSettings.sleepsUnderFloor ? "floor \(LidAwakePolicy.batteryFloorPercent)%" : "no battery floor"))
+            + (LidAwakeSettings.sleepsUnderFloor ? "floor \(LidAwakePolicy.batteryFloorPercent)%" : "no battery floor")
+            + (LidAwakeSettings.staysAwakeOnAC ? ", awake on AC" : ""))
         startTimer()
         // Arming plays the same lub-dub the bag will hear, not a different
         // confirmation chime: the click is also the volume check.
@@ -527,7 +555,8 @@ final class LidAwake {
             battery: battery,
             holding: holding,
             clamshellCausesSleep: Self.clamshellCausesSleep(),
-            floorEnabled: LidAwakeSettings.sleepsUnderFloor)
+            floorEnabled: LidAwakeSettings.sleepsUnderFloor,
+            awakeOnAC: LidAwakeSettings.staysAwakeOnAC)
         return "{\"enabled\":\(LidAwakeSettings.isEnabled),"
             + "\"mode\":\"\(LidAwakeSettings.mode.rawValue)\","
             + "\"holding\":\(holding),"
@@ -537,6 +566,7 @@ final class LidAwake {
             + "\"on_ac\":\(Power.isOnAC()),"
             + "\"battery\":\(battery.map(String.init) ?? "null"),"
             + "\"sleeps_under_floor\":\(LidAwakeSettings.sleepsUnderFloor),"
+            + "\"awake_on_ac\":\(LidAwakeSettings.staysAwakeOnAC),"
             + "\"sounds\":\(LidAwakeSettings.playsSounds),"
             + "\"working\":[\(working.map(String.init).joined(separator: ","))],"
             + "\"beating\":\(wasBeating),"
@@ -614,7 +644,7 @@ final class LidAwake {
             let moved = closed != lid.lidWasClosed
             lid.lidWasClosed = closed
             insomniaInfo("LidAwake: lid \(closed ? "closed" : "opened")\(moved ? "" : " (again — a wake, not the lid)")")
-            if closed && moved { lid.lidClosed() } else if LidAwakeSettings.isEnabled { lid.tick() }
+            if closed && moved { lid.lidClosed() } else if LidAwakeSettings.isWatching { lid.tick() }
         }, me, &lidNotifier)
         guard kr == KERN_SUCCESS else {
             IONotificationPortDestroy(port)
@@ -641,7 +671,7 @@ final class LidAwake {
     private func lidClosed() {
         // The lid came down inside a dying pulse: that pulse is the answer.
         if farewellInFlight { return }
-        guard LidAwakeSettings.isEnabled else {
+        guard LidAwakeSettings.isWatching else {
             answerLidClose(.release, battery: Self.batteryPercent())
             return
         }
@@ -801,7 +831,8 @@ final class LidAwake {
             battery: battery,
             holding: holding,
             clamshellCausesSleep: Self.clamshellCausesSleep(),
-            floorEnabled: LidAwakeSettings.sleepsUnderFloor)
+            floorEnabled: LidAwakeSettings.sleepsUnderFloor,
+            awakeOnAC: LidAwakeSettings.staysAwakeOnAC)
 
         // The lid just came down: the diagram's left branch answers it.
         if lidJustClosed {
@@ -846,7 +877,9 @@ final class LidAwake {
             // just never hearing another beat: this sleep is on purpose, not
             // a crash.
             wasBeating = false
-            let reason = "no Claude working"
+            // …or the charger came out from under a lid only it was holding.
+            let reason = working.isEmpty && LidAwakeSettings.staysAwakeOnAC && !Power.isOnAC()
+                ? "charger out, nothing else holds the lid" : "no Claude working"
             if sound == .flatTone {
                 // On AC (no external display) the Mac is going to sleep, not
                 // dying: the long tone alone, under our still-raised flag.
@@ -932,8 +965,10 @@ final class LidAwake {
         pmsetRefused = false
         holding = wanted
         insomniaInfo(wanted
-            ? "LidAwake: a Claude is working — holding the lid open"
-            : "LidAwake: no Claude working — releasing, the Mac may sleep")
+            ? (LidAwakeSettings.staysAwakeOnAC && Power.isOnAC()
+                ? "LidAwake: awake on AC — holding the lid open"
+                : "LidAwake: a Claude is working — holding the lid open")
+            : "LidAwake: nothing to stay up for — releasing, the Mac may sleep")
         // Clearing the flag is *permission* to sleep, not a sleep. The kernel
         // decides about a lid at the moment it closes; a veto withdrawn any
         // time after that is not a second close, so the Mac can sit awake in a
@@ -1165,8 +1200,9 @@ final class LidAwake {
                 // Claude that is working again, and five seconds is long enough
                 // for that to happen. Leaving `holding` alone here is the whole
                 // fix — the next tick sees `.beat` and simply carries on.
-                if LidAwakeSettings.mode.holdsRegardless || !self.workingNow().isEmpty {
-                    insomniaInfo("LidAwake: a Claude started again during the flatline — still holding")
+                if LidAwakeSettings.mode.holdsRegardless || !self.workingNow().isEmpty
+                    || (LidAwakeSettings.staysAwakeOnAC && Power.isOnAC()) {
+                    insomniaInfo("LidAwake: a Claude started again (or the charger went in) during the flatline — still holding")
                     return
                 }
                 self.hold(false)

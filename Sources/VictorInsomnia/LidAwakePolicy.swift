@@ -92,6 +92,14 @@ enum LidAwakePolicy {
     ///   Defaulting to `false` keeps the AC callers on the silent release.
     /// - Parameter floorEnabled: the "Sleep under 20%" checkbox. `false` means
     ///   no stand-down at any charge; defaulting it keeps the floor.
+    /// - Parameter awakeOnAC: the "🔌 Awake on AC" checkbox (2026-11-13, Victor:
+    ///   *"lid on AC: a) sleeps (default) or b) stays awake — different from
+    ///   what happens on battery, which stays as it is"*). Ticked, the charger
+    ///   holds the shut lid up **whatever the mode, `Off` included, and whether
+    ///   or not a Claude is working** — a VM labelling overnight is not a
+    ///   Claude, and `Never sleep` is a battery mode the plug-in takes back.
+    ///   On battery it decides nothing; pulling the charger from under a shut
+    ///   lid is a release like any other, announced the same way.
     static func decide(
         enabled: Bool,
         always: Bool = false,
@@ -102,9 +110,12 @@ enum LidAwakePolicy {
         holding: Bool = false,
         clamshellCausesSleep: Bool = false,
         floorEnabled: Bool = true,
-        floor: Int = batteryFloorPercent
+        floor: Int = batteryFloorPercent,
+        awakeOnAC: Bool = false
     ) -> Action {
-        guard enabled else { return .release }
+        // Nothing is watching: the mode is `Off` and the charger tick is not set.
+        guard enabled || awakeOnAC else { return .release }
+        let heldOnAC = awakeOnAC && onAC
 
         // The floor is checked first, before anything can decide to hold or to
         // beat, so the tick that stands down does not also sound like a healthy
@@ -113,7 +124,9 @@ enum LidAwakePolicy {
         // "Sleep under 20%" unticked (2026-10-07) takes the floor away
         // entirely: the flag then rides the battery down to macOS's own
         // emergency sleep.
-        if floorEnabled, !onAC, let battery, battery < floor { return .standDown }
+        // Only an armed mode has anything to stand down: the charger tick
+        // holds nothing on battery.
+        if enabled, floorEnabled, !onAC, let battery, battery < floor { return .standDown }
 
         // The last Claude finished. If we were holding a shut lid on battery,
         // this release sleeps the Mac, so it is announced before it happens;
@@ -129,8 +142,11 @@ enum LidAwakePolicy {
         // counting after 5 min offline. The battery floor is what catches a
         // bagged Mac that waits all night.
         let releaseSleeps = lidClosed && (!onAC || clamshellCausesSleep)
-        // `always` holds whatever is (not) running.
-        guard always || claudeWorking else { return (holding && releaseSleeps) ? .farewell : .release }
+        // `always` holds whatever is (not) running, and so does the charger
+        // with "Awake on AC" ticked — in every mode.
+        guard heldOnAC || (enabled && (always || claudeWorking)) else {
+            return (holding && releaseSleeps) ? .farewell : .release
+        }
 
         return (lidClosed && !onAC) ? .beat : .hold
     }

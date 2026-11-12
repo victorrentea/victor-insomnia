@@ -60,6 +60,7 @@ final class InsomniaMenuTests: XCTestCase {
         var rows: [(NSAttributedString, String)] = LidAwakeMode.allCases.map {
             (Menu.attributedLabel($0, counts: counts), $0 == .background ? Menu.checkMark : "")
         }
+        rows.append((Menu.plain(Menu.awakeOnACLabel), ""))
         rows.append((Menu.plain(Menu.floorLabel), Menu.checkMark))
         rows.append((Menu.plain(Menu.quitLabel), Menu.quitHint))
         let stop = Menu.tabStop(titles: rows.map(\.0))
@@ -134,6 +135,10 @@ final class InsomniaMenuTests: XCTestCase {
         XCTAssertEqual(colour(at: text.range(of: "/20").location), NSColor.secondaryLabelColor)
         XCTAssertEqual(colour(at: text.range(of: "×").location), NSColor.secondaryLabelColor)
         XCTAssertNil(colour(at: text.range(of: "/rc").location))
+    }
+
+    func testTheChargerCheckboxNamesTheCharger() {
+        XCTAssertEqual(Menu.awakeOnACLabel, "🔌 Awake on AC")
     }
 
     func testTheFloorCheckboxNamesTheFloor() {

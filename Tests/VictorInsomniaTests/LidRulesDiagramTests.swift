@@ -65,6 +65,8 @@ final class LidRulesDiagramTests: XCTestCase {
         /// The lid on the tick (a lid close is always closed).
         var lidClosed = true
         var wasBeating = false
+        /// The 🔌 Awake on AC tick.
+        var awakeOnAC = false
         let action: LidAwakePolicy.Action
         let sound: LidAwakePolicy.Sound
     }
@@ -94,6 +96,14 @@ final class LidRulesDiagramTests: XCTestCase {
              event: .lidClosed, armed: false, onAC: true, externalDisplay: true, action: .release, sound: .threeQuickBeats),
         Path(name: "close with SleepDisabled raised by someone else → three quick beats",
              event: .lidClosed, armed: false, heldBySomeoneElse: true, action: .release, sound: .threeQuickBeats),
+        Path(name: "close, mode Off, on AC, 🔌 ticked → three quick beats, held",
+             event: .lidClosed, armed: false, onAC: true, awakeOnAC: true, action: .hold, sound: .threeQuickBeats),
+        Path(name: "close, Claude, nothing working, on AC, 🔌 ticked → three quick beats, held",
+             event: .lidClosed, onAC: true, awakeOnAC: true, action: .hold, sound: .threeQuickBeats),
+        Path(name: "close, mode Off, on battery, 🔌 ticked → flat tone: the tick is for the charger only",
+             event: .lidClosed, armed: false, awakeOnAC: true, action: .release, sound: .flatTone),
+        Path(name: "close, mode Off, on battery under the floor, 🔌 ticked → flat tone, nothing to stand down",
+             event: .lidClosed, armed: false, battery: 10, awakeOnAC: true, action: .release, sound: .flatTone),
 
         // ── every 10 s ──
         Path(name: "tick, lid shut, on battery, crosses the floor → dying pulse",
@@ -116,6 +126,16 @@ final class LidRulesDiagramTests: XCTestCase {
              event: .tick, holding: true, lidClosed: false, action: .release, sound: .none),
         Path(name: "tick, lid shut on AC with a display, the work finishes → silent release",
              event: .tick, onAC: true, holding: true, externalDisplay: true, action: .release, sound: .none),
+        Path(name: "tick, lid shut, on AC, mode Off, 🔌 ticked → silent hold",
+             event: .tick, armed: false, onAC: true, holding: true, awakeOnAC: true, action: .hold, sound: .none),
+        Path(name: "tick, lid shut, on AC, the work finishes, 🔌 ticked → still a silent hold",
+             event: .tick, onAC: true, holding: true, awakeOnAC: true, action: .hold, sound: .none),
+        Path(name: "tick, lid shut, mode Off, the charger comes out of a 🔌 hold → dying pulse",
+             event: .tick, armed: false, holding: true, awakeOnAC: true, action: .farewell, sound: .dyingPulse),
+        Path(name: "tick, lid shut, mode Off, on battery under the floor, 🔌 ticked → release, never a stand-down",
+             event: .tick, armed: false, battery: 10, awakeOnAC: true, action: .release, sound: .none),
+        Path(name: "tick, lid shut, on battery, a Claude working, 🔌 ticked → heartbeat, as without it",
+             event: .tick, working: true, holding: true, wasBeating: true, awakeOnAC: true, action: .beat, sound: .heartbeat),
     ]
 
     func testEveryPathThroughTheDiagram() {
@@ -124,7 +144,7 @@ final class LidRulesDiagramTests: XCTestCase {
             let action = LidAwakePolicy.decide(
                 enabled: p.armed, always: p.always, claudeWorking: p.working,
                 lidClosed: lidClosed, onAC: p.onAC, battery: p.battery, holding: p.holding,
-                clamshellCausesSleep: !p.externalDisplay)
+                clamshellCausesSleep: !p.externalDisplay, awakeOnAC: p.awakeOnAC)
             XCTAssertEqual(action, p.action, p.name)
             let sound: LidAwakePolicy.Sound
             switch p.event {
@@ -137,6 +157,26 @@ final class LidRulesDiagramTests: XCTestCase {
             }
             XCTAssertEqual(sound, p.sound, p.name)
         }
+    }
+
+    /// 🔌 Awake on AC, over every input: on battery it changes no decision,
+    /// and on the charger it never lets go.
+    func testAwakeOnACDecidesOnlyOnTheCharger() {
+        for armed in [false, true] { for always in [false, true] { for working in [false, true] {
+            for lid in [false, true] { for holding in [false, true] { for battery in [10, 80] {
+                func decide(onAC: Bool, tick: Bool) -> LidAwakePolicy.Action {
+                    LidAwakePolicy.decide(enabled: armed, always: always, claudeWorking: working, lidClosed: lid,
+                                          onAC: onAC, battery: battery, holding: holding,
+                                          clamshellCausesSleep: true, awakeOnAC: tick)
+                }
+                let state = "armed:\(armed) always:\(always) working:\(working) lid:\(lid) holding:\(holding) \(battery)%"
+                XCTAssertEqual(decide(onAC: true, tick: true), .hold, state)
+                // Off never held anything on battery, so there the tick only
+                // adds the goodbye for a hold of its own; armed, nothing moves.
+                if armed { XCTAssertEqual(decide(onAC: false, tick: true), decide(onAC: false, tick: false), state) }
+                else { XCTAssertEqual(decide(onAC: false, tick: true), holding && lid ? .farewell : .release, state) }
+            } } }
+        } } }
     }
 
     /// Victor's rule, stated over every input rather than the rows above:

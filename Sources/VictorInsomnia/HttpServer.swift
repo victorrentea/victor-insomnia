@@ -8,6 +8,7 @@ import Network
 ///   GET /ping                       → {"ok":true}
 ///   GET /test/lid-awake/state       → everything the decision is made from
 ///   GET /test/lid-awake/mode/<m>    → off | interactive | background | always
+///   GET /test/lid-awake/awake-on-ac/<on|off> → the 🔌 Awake on AC tick
 ///   GET /test/lid-awake/flatline    → play the 🫀 flatline, flag untouched
 ///   GET /test/sleep-chime           → play the sleep tone (blocks ≤ 3 s)
 ///   GET /test/claude-activity       → which sessions count as working, and which are skipped
@@ -82,6 +83,11 @@ final class HttpServer {
             // Through the same call the menu uses, then the menu repaints:
             // a mode the menu disagrees with is the lie the tick prevents.
             DispatchQueue.main.sync { _ = lid.setMode(mode, source: .http) }
+            DispatchQueue.main.async(execute: onModeChanged)
+            return (200, lid.stateJSON())
+        case "/test/lid-awake/awake-on-ac/on", "/test/lid-awake/awake-on-ac/off":
+            let on = path.hasSuffix("/on")
+            DispatchQueue.main.sync { _ = lid.setAwakeOnAC(on, source: .http) }
             DispatchQueue.main.async(execute: onModeChanged)
             return (200, lid.stateJSON())
         case "/test/lid-awake/flatline":

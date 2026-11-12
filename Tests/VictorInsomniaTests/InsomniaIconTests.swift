@@ -116,6 +116,16 @@ final class InsomniaIconTests: XCTestCase {
                        + "the sudoers rule is missing (a macOS update wipes it) — run ./install-sudoers.sh")
     }
 
+    func testTheTooltipSaysTheChargerIsHolding() {
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .off, holding: true, heldOnAC: true),
+                       "Insomnia: Sleep on Lid Close — 🔌 on the charger: awake with the lid shut")
+        XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: true, counts: .init(claude: 1, rc: 0),
+                                            floor: true, heldOnAC: true),
+                       "Insomnia: Claude — 🔌 on the charger: awake with the lid shut\n"
+                       + "• 1 Claude session working in a terminal\n"
+                       + "🪫 sleeps under 20% battery")
+    }
+
     func testTheTooltipExplainsTheBattery() {
         XCTAssertEqual(InsomniaMenu.tooltip(mode: .interactive, holding: false, floor: true),
                        "Insomnia: Claude — no Claude working — the Mac may sleep\n"

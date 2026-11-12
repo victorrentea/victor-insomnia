@@ -16,7 +16,8 @@ is let go to sleep like any other.
 
 The menu: **Off / Claude / Claude /rc / Always**, each with the count of
 sessions working right now (`Claude×1 + /rc×1/3`: one terminal session
-working, one of three remote sessions working), plus **Sleep under 20%** (the
+working, one of three remote sessions working), plus **🔌 Awake on AC** (off by default: with the charger in, the
+lid never sleeps the Mac, whatever the mode), **Sleep under 20%** (the
 battery floor that stands the whole thing down, on by default) and
 **🛰️ Claude RC** (off by default): keeps a `claude remote-control` server up
 in a detached tmux session, so your phone can open Claude sessions on this Mac

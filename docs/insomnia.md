@@ -1095,6 +1095,37 @@ the row and lets the closed lid sleep the Mac the ordinary way.
   worse of the two mistakes.
 - The floor does not apply on AC: at 4% and plugged in the number is going up.
 
+## 🔌 Awake on AC: the charger holds the lid, whatever the mode (2026-11-13)
+
+A row above "Sleep under 20%", **unticked by default**. Victor: *"lid on AC:
+a) sleeps (default) or b) stays awake — different from what happens on
+battery, which stays as it is."*
+
+What prompted it: an overnight batch in a VM. A VM is not a Claude session, so
+`Claude` let the Mac sleep under its shut lid; the only way to keep it up was
+`Never sleep` — which is a *battery* mode, taken back by the very plug-in the
+batch was waiting for (`modeOnPlugIn`), so a script had to keep re-asserting
+it. The charger needed a switch of its own.
+
+- **Ticked, on AC**: the flag is held under a shut lid in every mode, `Off`
+  included, with or without a Claude working (`LidAwakePolicy.decide`,
+  `awakeOnAC`). Silent `hold`; closing the lid plays the three quick beats.
+- **Unticked, on AC**: as before — the Mac sleeps unless the mode holds it.
+- **On battery**: the tick decides nothing; the mode and the floor do. The one
+  thing it adds: pulling the charger from under a shut lid that only the tick
+  was holding is a `farewell` (the dying pulse), not a silent release.
+- The floor never stands down a hold that is only the tick's: on battery it
+  holds nothing, so there is nothing to stand down, and the mode is already
+  whatever it was.
+- In `Off` the tick is what keeps the 10 s timer running
+  (`LidAwakeSettings.isWatching`), so ticking and unticking go through
+  `LidAwake.setAwakeOnAC` → `apply`, like a mode change.
+
+Stored under `LidAwake.awakeOnAC`, shown as `"awake_on_ac"` in
+`/test/lid-awake/state`, set headlessly with
+`/test/lid-awake/awake-on-ac/<on|off>`. The menu bar icon does not change for
+it; the tooltip's first line says the charger is holding.
+
 ## 💓 Sounds: the checkbox that mutes it all (2026-10-21)
 
 A row under "Sleep under 20%", **ticked by default**. Unticked, every sound

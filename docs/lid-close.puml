@@ -29,7 +29,7 @@ case ( lid closed\n(a real open→closed edge,\nnot a dark wake) )
   if (armed, on battery, floor ticked,\nbattery < 20%?) then (yes)
     :**standDown**
     mode → Off, flag off, 🪫 overlay; <<#FFE0E0>>
-  elseif (armed and (Always, or a Claude working)?) then (yes)
+  elseif (armed and (Always, or a Claude working),\nor 🔌 Awake on AC ticked and on AC?) then (yes)
     if (on battery?) then (yes)
       :**beat**
       hold the flag; <<#E0FFE0>>
@@ -37,7 +37,7 @@ case ( lid closed\n(a real open→closed edge,\nnot a dark wake) )
       :**hold**
       hold the flag; <<#E0FFE0>>
     endif
-  elseif (armed, we were holding, and nothing\nelse keeps the shut lid up?) then (yes)
+  elseif (armed or 🔌 ticked, we were holding, and nothing\nelse keeps the shut lid up?) then (yes)
     :**farewell**
     the flag stays up for the sound; <<#FFF0D0>>
   else (no)
@@ -45,7 +45,7 @@ case ( lid closed\n(a real open→closed edge,\nnot a dark wake) )
     nothing was held; <<#EEEEEE>>
   endif
 
-  if (does the Mac stay up?\n(a Claude/Always holds it, an external display,\nor SleepDisabled raised by someone else)) then (yes)
+  if (does the Mac stay up?\n(a Claude/Always holds it, 🔌 Awake on AC on the charger,\nan external display,\nor SleepDisabled raised by someone else)) then (yes)
     :🔊 **threeQuickBeats**
     three lub-dubs: "I am staying up"; <<#C8F7C8>>
     note right
@@ -61,9 +61,9 @@ case ( lid closed\n(a real open→closed edge,\nnot a dark wake) )
   endif
 
 ' ─────────────────────────── the 10-second tick ───────────────────────────────
-case ( every 10 s,\nwhile armed )
+case ( every 10 s, while armed\nor 🔌 Awake on AC ticked )
 
-  if (on battery, floor ticked,\nbattery < 20%?) then (yes)
+  if (armed, on battery, floor ticked,\nbattery < 20%?) then (yes)
     :**standDown**
     mode → Off, flag off, 🪫 overlay; <<#FFE0E0>>
     if (lid closed?) then (yes)
@@ -74,7 +74,7 @@ case ( every 10 s,\nwhile armed )
       :🔊 **none**
       the overlay says it; <<#EEEEEE>>
     endif
-  elseif (Always, or a Claude working?) then (yes)
+  elseif (armed and (Always, or a Claude working),\nor 🔌 Awake on AC ticked and on AC?) then (yes)
     if (lid closed and on battery?) then (yes)
       :**beat**
       hold the flag; <<#E0FFE0>>
@@ -88,7 +88,8 @@ case ( every 10 s,\nwhile armed )
     endif
   elseif (we were holding, and the lid is closed\nwith nothing else keeping the Mac up?) then (yes)
     :**farewell**
-    the work finished under the lid; <<#FFF0D0>>
+    the work finished under the lid,
+    or the charger came out of a 🔌 hold; <<#FFF0D0>>
     if (on battery?) then (yes)
       :🔊 **dyingPulse**
       the whole 🫀 flatline:
@@ -110,6 +111,10 @@ endswitch
 stop
 
 legend right
+  🔌 **Awake on AC** is a tick of its own, off by default: with the charger
+  in, the Mac stays up under a shut lid whatever the mode, Off included.
+  On battery it changes nothing — the mode decides, as before.
+
   The dying pulse is reserved for one thing: the Mac is **on battery**,
   the lid is **already closed**, and then the work finishes or the
   battery crosses the floor. Closing the lid never plays it — a lid close

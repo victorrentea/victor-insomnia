@@ -1,11 +1,12 @@
 import AppKit
 
-/// The 🛏 / ☕ / crossed-out 🛏 (+ 🪫) in the menu bar and its menu: the four modes, the battery
+/// The 🛏 / ☕ / crossed-out 🛏 (+ 🪫) in the menu bar and its menu: the four modes, 🔌 Awake on AC, the battery
 /// floor, the 💓 sounds, the 🛰️ Claude RC watchdog, Quit.
 final class StatusMenu: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let menu = NSMenu()
     private var modeItems: [LidAwakeMode: NSMenuItem] = [:]
+    private var awakeOnACItem: NSMenuItem!
     private var floorItem: NSMenuItem!
     private var soundsItem: NSMenuItem!
     private var remoteControlItem: NSMenuItem!
@@ -28,6 +29,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
             modeItems[mode] = item
         }
         menu.addItem(.separator())
+        awakeOnACItem = NSMenuItem(title: InsomniaMenu.awakeOnACLabel,
+                                   action: #selector(toggleAwakeOnAC), keyEquivalent: "")
+        awakeOnACItem.target = self
+        awakeOnACItem.toolTip = InsomniaMenu.awakeOnACTooltip
+        menu.addItem(awakeOnACItem)
         floorItem = NSMenuItem(title: InsomniaMenu.floorLabel,
                                action: #selector(toggleFloor), keyEquivalent: "")
         floorItem.target = self
@@ -65,7 +71,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         let floor = InsomniaMenu.showsFloor(ticked: LidAwakeSettings.sleepsUnderFloor, underFloor: lid.underFloor)
         statusItem.button?.image = InsomniaIcon.look(mode: mode).image(digits: digits, tint: tint, floor: floor)
         statusItem.button?.toolTip = InsomniaMenu.tooltip(mode: mode, holding: holding,
-                                                            counts: counts, floor: floor, refused: refused)
+                                                            counts: counts, floor: floor, refused: refused,
+                                                            heldOnAC: LidAwakeSettings.staysAwakeOnAC && Power.isOnAC())
         layOutRows(counts: counts)
     }
 
@@ -78,6 +85,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
             return (item, InsomniaMenu.attributedLabel(each, counts: counts),
                     InsomniaMenu.isChecked(each, current: mode) ? InsomniaMenu.checkMark : "")
         }
+        titles.append((awakeOnACItem, InsomniaMenu.plain(InsomniaMenu.awakeOnACLabel),
+                       LidAwakeSettings.staysAwakeOnAC ? InsomniaMenu.checkMark : ""))
         titles.append((floorItem, InsomniaMenu.plain(InsomniaMenu.floorLabel),
                        LidAwakeSettings.sleepsUnderFloor ? InsomniaMenu.checkMark : ""))
         titles.append((soundsItem, InsomniaMenu.plain(InsomniaMenu.soundsLabel),
@@ -119,6 +128,12 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         guard let raw = sender.representedObject as? String,
               let wanted = LidAwakeMode(rawValue: raw) else { return }
         lid.setMode(wanted, source: .menu)
+        refresh()
+    }
+
+    /// Lands at once: in `Off` this tick is what starts and stops the watch.
+    @objc private func toggleAwakeOnAC() {
+        lid.setAwakeOnAC(!LidAwakeSettings.staysAwakeOnAC, source: .menu)
         refresh()
     }
 

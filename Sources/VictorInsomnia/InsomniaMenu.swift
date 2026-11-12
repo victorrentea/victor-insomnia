@@ -139,6 +139,13 @@ enum InsomniaMenu {
     /// twenty"* — at 49% it was showing just for the tick).
     static func showsFloor(ticked: Bool, underFloor: Bool) -> Bool { ticked && underFloor }
 
+    /// Short on purpose, like the rest. Off by default.
+    static let awakeOnACEmoji = "🔌"
+    static let awakeOnACLabel = "\(awakeOnACEmoji) Awake on AC"
+    static let awakeOnACTooltip = "Lid shut with the charger in: ticked, the Mac stays awake, whatever the mode "
+        + "above and whether or not a Claude is working. Unticked, it sleeps unless the mode holds it. "
+        + "On battery the mode decides either way."
+
     static let soundsLabel = "💓 Sounds"
     static let soundsTooltip = "The heartbeat under a shut lid, the flatline, the floor's beeps and the sleep tone. "
         + "Unticked, the lid behaves the same, silently."
@@ -196,7 +203,14 @@ enum InsomniaMenu {
     /// explained either. The 🪫 beside the icon gets the last line.
     static func tooltip(mode: LidAwakeMode, holding: Bool,
                         counts: ClaudeActivity.WorkingCounts? = nil, floor: Bool = false,
-                        refused: Bool = false) -> String {
+                        refused: Bool = false, heldOnAC: Bool = false) -> String {
+        // The charger tick is holding: say so first, then who else is.
+        if heldOnAC, !refused {
+            let lines = countLines(counts, mode: mode)
+            let floorLine = floor ? ["\(floorEmoji) sleeps under \(LidAwakePolicy.batteryFloorPercent)% battery"] : []
+            return (["Insomnia: \(name(mode)) — \(awakeOnACEmoji) on the charger: awake with the lid shut"]
+                    + lines + floorLine).joined(separator: "\n")
+        }
         let floorLine = floor ? ["\(floorEmoji) sleeps under \(LidAwakePolicy.batteryFloorPercent)% battery"] : []
         if refused, mode != .off {
             return (["Insomnia: \(name(mode)) — ⚠️ CANNOT hold the Mac awake: pmset was refused",
