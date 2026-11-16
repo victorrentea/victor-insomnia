@@ -148,6 +148,19 @@ older build); `LidAwakePolicy.modeOnPlugIn`, called from the same
 lub-dub: the Mac is at the desk) and logged with the source `charger in`. Any
 other mode is left alone.
 
+**Unplugging starts from the defaults** (2026-11-16, Victor: *"după deconectarea
+de la curent, default-ul ar trebui să fie întotdeauna cafeaua … sunet și
+sleep-ul resetat la true, la scoaterea de pe AC"*). AC → battery
+(`LidAwakePolicy.isUnplug`, `Power.onUnplug`) puts the mode on ☕ `Claude` from
+anything — 🛏 `Off`, `Claude + /rc`, `Never sleep` — (`modeOnUnplug`,
+`LidAwake.resetModeOnUnplug`, source `charger out`, silent) and ticks 💓 Sounds
+and 🪫 Sleep under 20% (`LidAwakeSettings.restoreTicksOnUnplug`). So a setting
+changed at the desk lasts while the charger is in, and one changed on battery
+until the next unplugging; `🔌 Awake on AC` is not touched. Starting the app on
+battery is not an unplugging. This makes the plug-in's two rules above mostly
+moot for the trip itself — the battery always starts clean — but they still tidy
+the desk.
+
 **Renamed on the menu 2026-10-22:** `Off` reads **Sleep on Lid Close** and `Always`
 reads **Never sleep** (Victor) — only the words; the raw values (`off`, `always`), the
 `/mode/<m>` hooks and the rest of this doc keep the old names.

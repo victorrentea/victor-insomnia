@@ -60,6 +60,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let mode = lid.revertAlwaysOnPlugIn()
             if floor || mode { menu?.refresh() }
         }
+        Power.onUnplug { [weak menu, lid] in
+            let ticks = LidAwakeSettings.restoreTicksOnUnplug(battery: LidAwake.batteryPercent())
+            let mode = lid.resetModeOnUnplug()
+            if ticks || mode { menu?.refresh() }
+        }
         // The battery floor stood the feature down: the mode is `off` now.
         lid.onAutoDisabled = { [weak menu] pct in
             insomniaInfo("LidAwake: stood down at \(pct)% — mode is off")

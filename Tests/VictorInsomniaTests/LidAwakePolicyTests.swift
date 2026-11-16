@@ -224,6 +224,38 @@ final class LidAwakePolicyTests: XCTestCase {
         XCTAssertFalse(LidAwakeSettings.restoreFloorOnPlugIn(battery: 100), "already ticked: nothing to do")
     }
 
+    /// 2026-11-16, Victor: unplugging lands on ☕ Claude with Sounds and the
+    /// floor ticked, whatever was set at the desk.
+    func testUnpluggingIsAcToBatteryOnly() {
+        XCTAssertTrue(LidAwakePolicy.isUnplug(wasOnAC: true, onAC: false))
+        XCTAssertFalse(LidAwakePolicy.isUnplug(wasOnAC: false, onAC: true), "plugging in is not")
+        XCTAssertFalse(LidAwakePolicy.isUnplug(wasOnAC: false, onAC: false), "still on battery is not")
+        XCTAssertFalse(LidAwakePolicy.isUnplug(wasOnAC: true, onAC: true))
+    }
+
+    func testUnpluggingLandsOnClaudeFromAnyMode() {
+        XCTAssertEqual(LidAwakePolicy.modeOnUnplug(current: .off), .interactive)
+        XCTAssertEqual(LidAwakePolicy.modeOnUnplug(current: .background), .interactive)
+        XCTAssertEqual(LidAwakePolicy.modeOnUnplug(current: .always), .interactive)
+        XCTAssertNil(LidAwakePolicy.modeOnUnplug(current: .interactive), "already there: nothing to do")
+    }
+
+    func testUnpluggingTicksSoundsAndTheFloorAgain() {
+        let defaults = UserDefaults.standard
+        let floor = defaults.object(forKey: LidAwakeSettings.sleepUnderFloorKey)
+        let sounds = defaults.object(forKey: LidAwakeSettings.soundsKey)
+        defer {
+            defaults.set(floor, forKey: LidAwakeSettings.sleepUnderFloorKey)
+            defaults.set(sounds, forKey: LidAwakeSettings.soundsKey)
+        }
+        LidAwakeSettings.sleepsUnderFloor = false
+        LidAwakeSettings.playsSounds = false
+        XCTAssertTrue(LidAwakeSettings.restoreTicksOnUnplug(battery: 80))
+        XCTAssertTrue(LidAwakeSettings.sleepsUnderFloor)
+        XCTAssertTrue(LidAwakeSettings.playsSounds)
+        XCTAssertFalse(LidAwakeSettings.restoreTicksOnUnplug(battery: 80), "both ticked: nothing to do")
+    }
+
     /// 2026-10-22, Victor: on the plug-in Never sleep goes back to Claude, or to
     /// the mode it was picked from.
     func testThePlugInTakesNeverSleepBack() {

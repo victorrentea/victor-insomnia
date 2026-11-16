@@ -32,6 +32,20 @@ enum LidAwakePolicy {
     /// already on AC is not one, so an untick at the desk holds until the next.
     static func isPlugIn(wasOnAC: Bool, onAC: Bool) -> Bool { !wasOnAC && onAC }
 
+    /// **Unplugging starts from the defaults** (2026-11-16, Victor: *"după
+    /// deconectarea de la curent, default-ul ar trebui să fie întotdeauna
+    /// cafeaua … sunet și sleep-ul resetat la true, la scoaterea de pe AC"*):
+    /// AC → battery puts the mode on ☕ `Claude`, whatever it was — 🛏 `Off`,
+    /// `+ /rc`, `Never sleep` — and ticks 💓 Sounds and 🪫 Sleep under 20%. A
+    /// setting changed at the desk lasts while the charger is in; one changed
+    /// on battery lasts until the next unplugging.
+    static func isUnplug(wasOnAC: Bool, onAC: Bool) -> Bool { wasOnAC && !onAC }
+
+    /// The mode the unplugging lands in; `nil` when it is already there.
+    static func modeOnUnplug(current: LidAwakeMode) -> LidAwakeMode? {
+        current == .interactive ? nil : .interactive
+    }
+
     /// **The plug-in also takes `Never sleep` back** (2026-10-22, Victor: the
     /// floor goes back on *and* Never sleep goes back to Claude — to the mode it
     /// was picked from, when that is known). `nil` when the mode is anything

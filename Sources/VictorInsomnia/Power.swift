@@ -27,6 +27,11 @@ enum Power {
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
     }
 
+    /// Calls `handler` on the main run loop each time the charger comes out
+    /// (AC → battery). Needs `onPlugIn` to have installed the listener.
+    static func onUnplug(_ handler: @escaping () -> Void) { unplugHandler = handler }
+
+    private static var unplugHandler: (() -> Void)?
     private static var plugInHandler: (() -> Void)?
     private static var wasOnAC = true
 
@@ -35,5 +40,6 @@ enum Power {
         let onAC = isOnAC()
         defer { wasOnAC = onAC }
         if LidAwakePolicy.isPlugIn(wasOnAC: wasOnAC, onAC: onAC) { plugInHandler?() }
+        if LidAwakePolicy.isUnplug(wasOnAC: wasOnAC, onAC: onAC) { unplugHandler?() }
     }
 }

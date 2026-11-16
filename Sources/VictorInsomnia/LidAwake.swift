@@ -43,6 +43,8 @@ enum LidAwakeChangeSource: String {
     case batteryFloor = "battery floor"
     /// The charger went in and took `Never sleep` back (`modeOnPlugIn`).
     case plugIn = "charger in"
+    /// The charger came out and the mode went back to `Claude` (`modeOnUnplug`).
+    case unplug = "charger out"
 }
 
 enum LidAwakeSettings {
@@ -114,6 +116,20 @@ enum LidAwakeSettings {
         sleepsUnderFloor = true
         UserDefaults.standard.removeObject(forKey: "LidAwake.floorWaivedUntilRecharge")
         insomniaInfo("LidAwake: charger in at \(battery.map { "\($0)%" } ?? "?") — Sleep under \(LidAwakePolicy.batteryFloorPercent)% ticked again")
+        return true
+    }
+
+    /// The charger came out: 💓 Sounds and 🪫 Sleep under 20% are ticked again
+    /// (`LidAwakePolicy.isUnplug`); `true` when either was off.
+    @discardableResult
+    static func restoreTicksOnUnplug(battery: Int?) -> Bool {
+        let floorWasOff = !sleepsUnderFloor, soundsWereOff = !playsSounds
+        guard floorWasOff || soundsWereOff else { return false }
+        sleepsUnderFloor = true
+        playsSounds = true
+        let what = [floorWasOff ? "Sleep under \(LidAwakePolicy.batteryFloorPercent)%" : nil, soundsWereOff ? "Sounds" : nil]
+            .compactMap { $0 }.joined(separator: " and ")
+        insomniaInfo("LidAwake: charger out at \(battery.map { "\($0)%" } ?? "?") — \(what) ticked again")
         return true
     }
 
@@ -443,6 +459,19 @@ final class LidAwake {
         insomniaInfo("LidAwake: charger in — Never sleep back to \(back.rawValue)")
         LidAwakeSettings.mode = back
         apply(announce: false, source: .plugIn)
+        return true
+    }
+
+    /// The charger came out: the mode goes to ☕ `Claude`, whatever it was
+    /// (`LidAwakePolicy.modeOnUnplug`); `true` when it changed. Silent — the
+    /// lid is open under the hand that pulled the cable.
+    @discardableResult
+    func resetModeOnUnplug() -> Bool {
+        let was = LidAwakeSettings.mode
+        guard let to = LidAwakePolicy.modeOnUnplug(current: was) else { return false }
+        insomniaInfo("LidAwake: charger out — \(was.rawValue) back to \(to.rawValue)")
+        LidAwakeSettings.mode = to
+        apply(announce: false, source: .unplug)
         return true
     }
 
