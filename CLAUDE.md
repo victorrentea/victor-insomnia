@@ -1,7 +1,7 @@
 # Victor Insomnia
 
 Menu bar app (☕ / 🛏) that holds the Mac awake with the lid shut **while a
-Claude Code session is working**. Extracted from `victor-macos-addons` on
+Claude Code session is working**. Extracted from `victor-mac` on
 2026-10-08; public repo `victorrentea/victor-insomnia`, branch `master`.
 
 **Read [docs/insomnia.md](docs/insomnia.md) before touching the code** — every
