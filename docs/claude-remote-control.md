@@ -9,7 +9,7 @@ row in `StatusMenu`, armed from `main.swift`. Script: `scripts/claude-rc.sh`,
 copied into the app as `Contents/Resources/claude-rc.sh`;
 `~/.victor-insomnia/claude-rc.sh` (or `$VICTOR_INSOMNIA_CLAUDE_RC`) wins over it.
 
-**Moved here from Victor Addons on 2026-10-16** (Victor: *"the part that keeps a
+**Moved here from Victor Mac on 2026-10-16** (Victor: *"the part that keeps a
 claude /rc up from startup moves to Insomnia"*), next to the `/rc×1/3` count it
 feeds: the sessions this server spawns are the ones `Claude /rc` holds the Mac
 up for. The tmux session name (`claude-rc`) did not change, so the server that

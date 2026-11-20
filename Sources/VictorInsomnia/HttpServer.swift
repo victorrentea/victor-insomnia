@@ -3,7 +3,7 @@ import Network
 
 /// Headless hooks on `127.0.0.1:55125`, so "why is it still awake?" is one
 /// `curl` instead of a lid, a battery and an ear. Same paths the feature had
-/// while it lived in Victor Addons (on 55123): only the port moved.
+/// while it lived in Victor Mac (on 55123): only the port moved.
 ///
 ///   GET /ping                       → {"ok":true}
 ///   GET /test/lid-awake/state       → everything the decision is made from

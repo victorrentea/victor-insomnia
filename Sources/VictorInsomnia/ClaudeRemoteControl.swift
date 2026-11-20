@@ -5,7 +5,7 @@ import Darwin
 ///
 /// **Default off**: this is a public app, and starting a `claude
 /// remote-control` server on somebody's Mac is not something to do unasked.
-/// (It was default *on* while it lived in Victor Addons, where it took over a
+/// (It was default *on* while it lived in Victor Mac, where it took over a
 /// LaunchAgent that was already running it; the maintainer's Mac carries the
 /// tick over in `defaults`, see docs/claude-remote-control.md.)
 enum ClaudeRemoteControlSettings {
@@ -167,7 +167,7 @@ enum ClaudeRemoteControlStaleness {
 /// watchdog had no way to be told *no*: killing the tmux session bought at
 /// most five minutes of quiet before launchd put it back. A menu row is an off
 /// switch, and a row that ticks is also the only place the state is visible.
-/// It lived in Victor Addons until 2026-10-16 and moved here, next to the
+/// It lived in Victor Mac until 2026-10-16 and moved here, next to the
 /// `/rc` count it feeds: Insomnia is what holds the Mac up for those sessions.
 ///
 /// **The script holds the command**, `claude-rc.sh` — the distinction that

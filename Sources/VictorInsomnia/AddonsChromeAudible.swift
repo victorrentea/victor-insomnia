@@ -1,6 +1,6 @@
 import Foundation
 
-/// "Is any Chrome tab audible?" — asked of Victor Addons, which owns the Chrome
+/// "Is any Chrome tab audible?" — asked of Victor Mac, which owns the Chrome
 /// extension's socket (`GET 127.0.0.1:55123/chrome/audible`).
 ///
 /// Chrome holds an output stream open whether or not a tab is playing, so

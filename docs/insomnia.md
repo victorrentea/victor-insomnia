@@ -1,6 +1,6 @@
 # 😴 Claude insomnia (was 🔋 Claude prevents sleep)
 
-**2026-10-08: its own app.** Extracted out of Victor Addons into this repo
+**2026-10-08: its own app.** Extracted out of Victor Mac into this repo
 (Victor: a standalone app with its own icon in the menu bar). What changed in
 the move — everything below this section is the feature's history and still
 describes the runtime, which moved unchanged:
@@ -98,7 +98,7 @@ describes the runtime, which moved unchanged:
   read from `~/.victor-insomnia/sounds/` (on Victor's Mac a symlink to the
   tablet soundboard's assets) or `$VICTOR_INSOMNIA_SOUNDS`; without them the
   system-sound fallbacks below play.
-- **"Is a Chrome tab audible?" is asked of Victor Addons**
+- **"Is a Chrome tab audible?" is asked of Victor Mac**
   (`GET 127.0.0.1:55123/chrome/audible`, 0.3 s timeout, only when Chrome holds
   an output stream), because Addons owns the Chrome extension's socket. Addons
   down = `nil` = Chrome counts as playing, the old cautious answer.
@@ -982,7 +982,7 @@ on battery, because everything here was gated on `!onAC`. Three holes, closed:
 **the sleep chime has never been audible on a real sleep.** Every sleep since it
 shipped (2026-09-22) — clamshell, software, maintenance — shows the same trace:
 
-- `pmset -g log`: `Delays to Sleep notifications: [Victor Addons is slow(17226 ms)]`,
+- `pmset -g log`: `Delays to Sleep notifications: [Victor Mac is slow(17226 ms)]`,
   on every one of them; the lid-to-sleep gap is 17 s each time.
 - `coreaudiod`: the speaker `mute` goes to 0 as the lid closes (the boost ran) and
   back to 1 fifteen seconds later.
