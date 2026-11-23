@@ -83,8 +83,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         layOutRows(counts: counts)
     }
 
-    /// Every row's title, the ✓ in front on one tab stop and ⌘Q on Quit's
-    /// right (see `InsomniaMenu.row`).
+    /// Every row's title, the ✓ in front on one tab stop (see `InsomniaMenu.row`).
     private func layOutRows(counts: ClaudeActivity.WorkingCounts?) {
         let mode = LidAwakeSettings.mode
         var rows: [(NSMenuItem, NSAttributedString, Bool)] = LidAwakeMode.allCases.compactMap { each in
@@ -99,12 +98,10 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         if !backgroundItem.isHidden {
             rows.append((backgroundItem, InsomniaMenu.plain(backgroundItem.title), false))
         }
-        let quit = InsomniaMenu.plain(InsomniaMenu.quitLabel)
-        let stop = InsomniaMenu.tabStop(titles: rows.map(\.1) + [quit])
         for (item, title, ticked) in rows {
             item.attributedTitle = InsomniaMenu.row(title, ticked: ticked)
         }
-        quitItem.attributedTitle = InsomniaMenu.row(quit, ticked: false, hint: InsomniaMenu.quitHint, tabStop: stop)
+        quitItem.attributedTitle = InsomniaMenu.row(InsomniaMenu.quitTitle, ticked: false)
     }
 
     func menuWillOpen(_ menu: NSMenu) {

@@ -175,20 +175,18 @@ enum InsomniaMenu {
     /// Whether a row is ticked — the current mode.
     static func isChecked(_ mode: LidAwakeMode, current: LidAwakeMode) -> Bool { mode == current }
 
-    // MARK: - The tick in front, ⌘Q on the right (2026-10-14, ticks moved 2026-11-23)
+    // MARK: - The tick in front, ⌘Q beside Quit (2026-10-14; reshaped 2026-11-23)
     //
     // **No `NSMenuItem.state`, no `keyEquivalent`** — the same cure as Victor
     // Effects' ✨ menu (Victor: *"make insomnia menu less wide"*): one native
     // ⌘Q adds a key-equivalent column (~47 pt) to the right of every title.
-    // Both marks are drawn inside the titles instead.
     //
-    // **The ✓ sits in front** (2026-11-23, Victor: *"put the ticks in front, not
-    // on the right"*): a left tab stop one tick wide, so the emojis line up
-    // whether a row is ticked or not. Only Quit keeps a right-hand mark, ⌘Q,
-    // right-aligned on a stop just past the longest title.
-
-    /// Smallest gap between the longest title and ⌘Q.
-    static let columnGap: CGFloat = 14
+    // 2026-11-23, Victor: *"put the ticks in front, not on the right"*, then
+    // *"make the Insomnia menu less wide"*. So the ✓ is drawn in front, on a
+    // left tab stop one tick wide (the emojis line up ticked or not), and ⌘Q
+    // is drawn in gray right after "Quit" instead of in a right-hand column —
+    // Quit is the shortest row, so the hint costs no width at all. The menu is
+    // now exactly as wide as its longest title plus the tick.
 
     static func width(_ text: String) -> CGFloat {
         (text as NSString).size(withAttributes: [.font: NSFont.menuFont(ofSize: 0)]).width
@@ -197,28 +195,23 @@ enum InsomniaMenu {
     /// Where every title starts: just past the ✓.
     static var tickStop: CGFloat { (width(checkMark) + 5).rounded(.up) }
 
-    /// Where ⌘Q's right edge goes: just past the longest title.
-    static func tabStop(titles: [NSAttributedString]) -> CGFloat {
-        let longest = titles.map { $0.size().width }.max() ?? 0
-        return (tickStop + longest + columnGap + width(quitHint)).rounded(.up)
-    }
-
-    /// `✓` (or nothing), a tab to `tickStop`, the title, and — for Quit — a tab
-    /// to `tabStop` and the right-aligned hint.
-    static func row(_ title: NSAttributedString, ticked: Bool, hint: String = "",
-                    tabStop: CGFloat = 0) -> NSAttributedString {
+    /// `✓` (or nothing), a tab to `tickStop`, the title.
+    static func row(_ title: NSAttributedString, ticked: Bool) -> NSAttributedString {
         let font: [NSAttributedString.Key: Any] = [.font: NSFont.menuFont(ofSize: 0)]
         let row = NSMutableAttributedString(string: (ticked ? checkMark : "") + "\t", attributes: font)
         row.append(title)
-        var stops = [NSTextTab(textAlignment: .left, location: tickStop)]
-        if !hint.isEmpty {
-            row.append(NSAttributedString(string: "\t" + hint, attributes: font))
-            stops.append(NSTextTab(textAlignment: .right, location: tabStop))
-        }
         let paragraph = NSMutableParagraphStyle()
-        paragraph.tabStops = stops
+        paragraph.tabStops = [NSTextTab(textAlignment: .left, location: tickStop)]
         row.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: row.length))
         return row
+    }
+
+    /// "Quit  ⌘Q", the hint in the secondary colour.
+    static var quitTitle: NSAttributedString {
+        let title = NSMutableAttributedString(attributedString: plain(quitLabel + "  "))
+        title.append(NSAttributedString(string: quitHint, attributes: [
+            .font: NSFont.menuFont(ofSize: 0), .foregroundColor: NSColor.secondaryLabelColor]))
+        return title
     }
 
     static func plain(_ text: String) -> NSAttributedString {

@@ -45,17 +45,15 @@ final class InsomniaMenuTests: XCTestCase {
         }
     }
 
-    func testQuitKeepsItsHintRightAlignedJustPastTheLongestTitle() {
-        let titles = [Menu.plain("☕ Claude×12/30 + /rc×3/12"), Menu.plain(Menu.floorLabel), Menu.plain(Menu.quitLabel)]
-        let stop = Menu.tabStop(titles: titles)
-        let longest = titles.map { $0.size().width }.max()!
-        XCTAssertGreaterThan(stop, Menu.tickStop + longest + Menu.columnGap)
-        XCTAssertLessThan(stop, Menu.tickStop + longest + Menu.columnGap + 30)
-        let row = Menu.row(Menu.plain(Menu.quitLabel), ticked: false, hint: Menu.quitHint, tabStop: stop)
-        XCTAssertEqual(row.string, "\tQuit\t⌘Q")
-        let style = row.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
-        XCTAssertEqual(style?.tabStops.map(\.alignment), [.left, .right])
-        XCTAssertEqual(style?.tabStops.last?.location, stop)
+    /// ⌘Q sits beside "Quit", not in a column: the menu is as wide as its
+    /// longest title plus the tick, nothing more (2026-11-23).
+    func testQuitCarriesItsHintBesideItsLabelSoTheMenuIsNoWiderThanItsLongestTitle() {
+        let quit = Menu.row(Menu.quitTitle, ticked: false)
+        XCTAssertEqual(quit.string, "\tQuit  ⌘Q")
+        let style = quit.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+        XCTAssertEqual(style?.tabStops.count, 1, "no right-hand column")
+        let longest = Menu.row(Menu.plain("☕ Claude×12/30 + /rc×3/12"), ticked: true)
+        XCTAssertLessThan(quit.size().width, longest.size().width)
     }
 
     /// Renders the menu rows in light and dark into `$TMPDIR/insomnia-menu-*.png`
@@ -67,11 +65,9 @@ final class InsomniaMenuTests: XCTestCase {
         }
         rows.append((Menu.plain(Menu.awakeOnACLabel), ""))
         rows.append((Menu.plain(Menu.floorLabel), Menu.checkMark))
-        rows.append((Menu.plain(Menu.quitLabel), Menu.quitHint))
-        let stop = Menu.tabStop(titles: rows.map(\.0))
-        let lines = rows.map { $0.1 == Menu.quitHint
-            ? Menu.row($0.0, ticked: false, hint: $0.1, tabStop: stop)
-            : Menu.row($0.0, ticked: $0.1 == Menu.checkMark) }
+        rows.append((Menu.quitTitle, ""))
+        let lines = rows.map { Menu.row($0.0, ticked: $0.1 == Menu.checkMark) }
+        let stop = lines.map { $0.size().width }.max()! + Menu.tickStop
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             let size = NSSize(width: stop + 30, height: 22 * CGFloat(lines.count))
             let rep = try XCTUnwrap(NSBitmapImageRep(
