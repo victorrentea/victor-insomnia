@@ -10,6 +10,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     private var floorItem: NSMenuItem!
     private var soundsItem: NSMenuItem!
     private var remoteControlItem: NSMenuItem!
+    private var phoneItem: NSMenuItem!
+    private let phoneMenu = NSMenu()
     private var quitItem: NSMenuItem!
     private let lid: LidAwake
     private let remoteControl: ClaudeRemoteControl
@@ -48,6 +50,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         remoteControlItem.target = self
         remoteControlItem.toolTip = InsomniaMenu.remoteControlTooltip
         menu.addItem(remoteControlItem)
+        phoneItem = NSMenuItem(title: InsomniaMenu.phoneSessionsLabel, action: nil, keyEquivalent: "")
+        phoneItem.toolTip = InsomniaMenu.phoneSessionsTooltip
+        phoneMenu.autoenablesItems = false
+        phoneItem.submenu = phoneMenu
+        menu.addItem(phoneItem)
         menu.addItem(.separator())
         // No `keyEquivalent`: its column would widen the whole menu. ⌘Q is
         // drawn in the title and claimed in `menuHasKeyEquivalent` instead.
@@ -93,6 +100,9 @@ final class StatusMenu: NSObject, NSMenuDelegate {
                        LidAwakeSettings.playsSounds ? InsomniaMenu.checkMark : ""))
         titles.append((remoteControlItem, InsomniaMenu.plain(InsomniaMenu.remoteControlLabel),
                        ClaudeRemoteControlSettings.isEnabled ? InsomniaMenu.checkMark : ""))
+        if !phoneItem.isHidden {
+            titles.append((phoneItem, InsomniaMenu.plain(phoneItem.title), ""))
+        }
         titles.append((quitItem, InsomniaMenu.plain(InsomniaMenu.quitLabel), InsomniaMenu.quitHint))
         let stop = InsomniaMenu.tabStop(titles: titles.map(\.1))
         for (item, title, mark) in titles {
@@ -101,8 +111,54 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        guard menu === self.menu else { return }
         menuIsOpen = true
+        fillPhoneMenu()
         refresh(counts: ClaudeActivity.workingCounts())
+    }
+
+    /// 📱 Phone sessions: rebuilt on every open, hidden when there are none.
+    private func fillPhoneMenu() {
+        let sessions = PhoneSessions.list()
+        phoneMenu.removeAllItems()
+        phoneItem.isHidden = sessions.isEmpty
+        phoneItem.title = InsomniaMenu.phoneSessionsLabel(count: sessions.count)
+        for session in sessions {
+            let item = NSMenuItem(title: InsomniaMenu.phoneSessionRow(title: session.title, busy: session.isBusy),
+                                  action: #selector(takeOverPhoneSession(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = PhoneSessionBox(session)
+            item.toolTip = InsomniaMenu.phoneSessionTooltip(cwd: session.cwd, busy: session.isBusy)
+            phoneMenu.addItem(item)
+        }
+    }
+
+    /// Mid-turn, the move cuts the turn short — asked first, never silently.
+    @objc private func takeOverPhoneSession(_ sender: NSMenuItem) {
+        guard let session = (sender.representedObject as? PhoneSessionBox)?.session else { return }
+        if session.isBusy {
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = InsomniaMenu.phoneBusyTitle
+            alert.informativeText = InsomniaMenu.phoneBusyText(title: session.title)
+            alert.addButton(withTitle: InsomniaMenu.phoneBusyConfirm)
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try PhoneSessions.takeOver(session)
+            } catch {
+                insomniaError("PhoneSessions: \(session.bridgeSessionId): \(error)")
+                DispatchQueue.main.async {
+                    NSApp.activate(ignoringOtherApps: true)
+                    let alert = NSAlert()
+                    alert.messageText = InsomniaMenu.phoneFailedTitle
+                    alert.informativeText = "\(error)"
+                    alert.runModal()
+                }
+            }
+        }
     }
 
     func menuDidClose(_ menu: NSMenu) { menuIsOpen = false }
@@ -162,4 +218,10 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     }
 
     @objc private func quit() { NSApp.terminate(nil) }
+}
+
+/// `representedObject` wants a class.
+private final class PhoneSessionBox: NSObject {
+    let session: PhoneSession
+    init(_ session: PhoneSession) { self.session = session }
 }

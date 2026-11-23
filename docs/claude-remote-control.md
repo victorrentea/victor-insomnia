@@ -109,3 +109,39 @@ tmux attach -t claude-rc          # detach with Ctrl-B then D
 tmux capture-pane -p -t claude-rc # the banner, without attaching
 curl -s 127.0.0.1:55125/test/claude-rc
 ```
+
+## 📱 Phone sessions (2026-11-23)
+
+The row under 🛰️ Claude RC, shown only while the phone has sessions open on
+this Mac: a submenu with one row per session (`⚙️` working, `💤` idle, the
+first prompt as the name). **Click one and it continues in a Terminal window,
+still the same session on the phone.** Code: `PhoneSessions.swift`; proof:
+`GET /test/phone-sessions` (read-only — the move itself has no HTTP hook, so a
+web page cannot trigger a kill through localhost).
+
+What the click does, each step measured on CLI 2.1.330 with a throwaway session:
+
+1. **Find it.** `~/.claude/sessions/<pid>.json` of every `claude --print
+   --sdk-url …` child names the local transcript (`sessionId`) and the phone's
+   id (`bridgeSessionId`, `session_01…`). The transcript is local.
+2. **Stop the headless child** — `SIGTERM`, `SIGKILL` after 5 s, the pid's argv
+   re-checked first. The host does not archive the session for that.
+3. **Reopen it**: a self-deleting `.command` file opened with Terminal runs
+   `CLAUDE_BRIDGE_REATTACH_SESSION=<bridgeSessionId> claude --resume <sessionId>`
+   in the session's cwd. The env var turns Remote Control on and **reattaches
+   to the same session**: same URL, same entry on the phone, full history; a
+   message from claude.ai was answered by the terminal and no headless child
+   came back.
+
+A session mid-turn asks first: the move cuts the turn short.
+
+**Dead end: `claude --resume <id> --remote-control`.** It reopens the
+conversation but mints a **new** phone session; the old entry stays, offline.
+Writing into the old one makes the host spawn a fresh headless child **on the
+same transcript** as the terminal — two writers, a forked conversation.
+
+**Fragile on purpose-built ground**: `CLAUDE_BRIDGE_REATTACH_SESSION` is an
+internal variable (the CLI uses it to hand a session to a relaunched process),
+not a documented flag. If a release drops it, the Terminal still resumes the
+conversation, only without Remote Control; re-test after a CLI upgrade if the
+phone stops following.

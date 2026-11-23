@@ -13,6 +13,7 @@ import Network
 ///   GET /test/sleep-chime           → play the sleep tone (blocks ≤ 3 s)
 ///   GET /test/claude-activity       → which sessions count as working, and which are skipped
 ///   GET /test/claude-rc             → 🛰️ what the row claims next to what tmux holds
+///   GET /test/phone-sessions        → 📱 the sessions the submenu would list (read-only)
 final class HttpServer {
     static let port: UInt16 = 55125
 
@@ -101,6 +102,13 @@ final class HttpServer {
             return (200, "{\"ok\":true}")
         case "/test/claude-activity":
             return (200, Self.claudeActivityJSON())
+        case "/test/phone-sessions":
+            let rows = PhoneSessions.list().map { s -> [String: Any] in
+                ["pid": s.pid, "sessionId": s.sessionId, "bridgeSessionId": s.bridgeSessionId,
+                 "cwd": s.cwd, "status": s.status, "title": s.title]
+            }
+            let data = (try? JSONSerialization.data(withJSONObject: ["sessions": rows], options: [.sortedKeys])) ?? Data()
+            return (200, String(decoding: data, as: UTF8.self))
         case "/test/claude-rc":
             return (200, remoteControl.stateJSON())
         default:

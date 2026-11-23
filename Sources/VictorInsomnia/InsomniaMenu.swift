@@ -130,6 +130,24 @@ enum InsomniaMenu {
     static let remoteControlTooltip = "Keeps `claude remote-control` up in the detached tmux session \"claude-rc\", "
         + "checked every minute, so the phone can open new Claude sessions on this Mac. Unticking kills it."
 
+    /// 📱 under 🛰️: the sessions the phone opened, each one click away from a
+    /// Terminal window that is still the same session on the phone.
+    static let phoneSessionsLabel = "📱 Phone sessions"
+    static func phoneSessionsLabel(count: Int) -> String { "\(phoneSessionsLabel) (\(count))" }
+    static let phoneSessionsTooltip = "Sessions opened from the phone or claude.ai on this Mac. "
+        + "Click one to continue it in a Terminal window — it stays the same session on the phone."
+    static func phoneSessionRow(title: String, busy: Bool) -> String { (busy ? "⚙️ " : "💤 ") + title }
+    static func phoneSessionTooltip(cwd: String, busy: Bool) -> String {
+        (busy ? "Working now. " : "Idle. ") + "Opens in Terminal, in \(cwd)."
+    }
+    static let phoneBusyTitle = "This session is mid-turn"
+    static func phoneBusyText(title: String) -> String {
+        "“\(title)” is working right now. Moving it to Terminal stops the current turn; "
+            + "you can ask it to carry on from there."
+    }
+    static let phoneBusyConfirm = "Stop and open in Terminal"
+    static let phoneFailedTitle = "Couldn't move the session to Terminal"
+
     static let floorEmoji = "🪫"
     static let floorLabel = "\(floorEmoji) Sleep under \(LidAwakePolicy.batteryFloorPercent)%"
 
