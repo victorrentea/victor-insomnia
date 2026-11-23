@@ -17,7 +17,7 @@ final class InsomniaMenuTests: XCTestCase {
     func testTheRowsLeadWithTheirEmojiAndCarryNoTickOfTheirOwn() {
         for mode in LidAwakeMode.allCases {
             let label = Menu.label(mode)
-            XCTAssertFalse(label.contains(Menu.checkMark), "\(mode): the tick belongs to the column, not the label")
+            XCTAssertFalse(label.contains(Menu.checkMark), "\(mode): the tick is drawn by `row`, not the label")
             XCTAssertTrue(label.hasPrefix(Menu.emoji(mode) + " "), "the row leads with its emoji")
         }
     }
@@ -31,26 +31,31 @@ final class InsomniaMenuTests: XCTestCase {
         }
     }
 
-    func testTheColumnIsOneRightTabStopJustPastTheLongestTitle() {
+    /// The ✓ in front (2026-11-23): every row starts its title on the same
+    /// left stop, ticked or not, so the emojis line up.
+    func testTheTickIsInFrontAndEveryTitleStartsOnTheSameStop() {
+        let ticked = Menu.row(Menu.plain(Menu.floorLabel), ticked: true)
+        let unticked = Menu.row(Menu.plain(Menu.soundsLabel), ticked: false)
+        XCTAssertEqual(ticked.string, Menu.checkMark + "\t" + Menu.floorLabel)
+        XCTAssertEqual(unticked.string, "\t" + Menu.soundsLabel)
+        for row in [ticked, unticked] {
+            let style = row.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+            XCTAssertEqual(style?.tabStops.map(\.location), [Menu.tickStop])
+            XCTAssertEqual(style?.tabStops.first?.alignment, .left)
+        }
+    }
+
+    func testQuitKeepsItsHintRightAlignedJustPastTheLongestTitle() {
         let titles = [Menu.plain("☕ Claude×12/30 + /rc×3/12"), Menu.plain(Menu.floorLabel), Menu.plain(Menu.quitLabel)]
         let stop = Menu.tabStop(titles: titles)
         let longest = titles.map { $0.size().width }.max()!
-        XCTAssertGreaterThan(stop, longest + Menu.columnGap)
-        XCTAssertLessThan(stop, longest + Menu.columnGap + 30, "no more than the column itself past the longest title")
-
-        let row = Menu.columned(Menu.plain(Menu.quitLabel), mark: Menu.quitHint, tabStop: stop)
-        XCTAssertEqual(row.string, "Quit\t⌘Q")
+        XCTAssertGreaterThan(stop, Menu.tickStop + longest + Menu.columnGap)
+        XCTAssertLessThan(stop, Menu.tickStop + longest + Menu.columnGap + 30)
+        let row = Menu.row(Menu.plain(Menu.quitLabel), ticked: false, hint: Menu.quitHint, tabStop: stop)
+        XCTAssertEqual(row.string, "\tQuit\t⌘Q")
         let style = row.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
-        XCTAssertEqual(style?.tabStops.map(\.location), [stop])
-        XCTAssertEqual(style?.tabStops.first?.alignment, .right)
-    }
-
-    func testTheMenuIsNarrowerThanWithTheNativeColumns() {
-        // The native check gutter and ⌘Q column cost ~20 + ~47 pt; the drawn
-        // column costs one gap and one ⌘Q.
-        let titles = [Menu.plain("☕ Claude×12/30 + /rc×3/12"), Menu.plain(Menu.floorLabel), Menu.plain(Menu.quitLabel)]
-        let longest = titles.map { $0.size().width }.max()!
-        XCTAssertLessThan(Menu.tabStop(titles: titles) - longest, 47)
+        XCTAssertEqual(style?.tabStops.map(\.alignment), [.left, .right])
+        XCTAssertEqual(style?.tabStops.last?.location, stop)
     }
 
     /// Renders the menu rows in light and dark into `$TMPDIR/insomnia-menu-*.png`
@@ -64,7 +69,9 @@ final class InsomniaMenuTests: XCTestCase {
         rows.append((Menu.plain(Menu.floorLabel), Menu.checkMark))
         rows.append((Menu.plain(Menu.quitLabel), Menu.quitHint))
         let stop = Menu.tabStop(titles: rows.map(\.0))
-        let lines = rows.map { Menu.columned($0.0, mark: $0.1, tabStop: stop) }
+        let lines = rows.map { $0.1 == Menu.quitHint
+            ? Menu.row($0.0, ticked: false, hint: $0.1, tabStop: stop)
+            : Menu.row($0.0, ticked: $0.1 == Menu.checkMark) }
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             let size = NSSize(width: stop + 30, height: 22 * CGFloat(lines.count))
             let rep = try XCTUnwrap(NSBitmapImageRep(

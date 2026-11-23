@@ -3,7 +3,7 @@ import Foundation
 
 /// One session the `claude remote-control` host is running for the phone (or
 /// claude.ai/code): a headless `claude --print --sdk-url …` child.
-struct PhoneSession: Equatable {
+struct BackgroundSession: Equatable {
     let pid: Int32
     /// The local transcript's id — `~/.claude/projects/<slug>/<sessionId>.jsonl`.
     let sessionId: String
@@ -22,7 +22,8 @@ struct PhoneSession: Equatable {
     var isBusy: Bool { status == "busy" }
 }
 
-/// **📱 Phone sessions**: lists the sessions opened from the phone and moves one
+/// **📡 Background**: lists the `/rc` sessions the remote-control host runs in the
+/// background (opened from the phone or claude.ai) and moves one
 /// into a Terminal window, **still the same session on the phone** (2026-11-23).
 ///
 /// Victor: *"could Insomnia list the remote sessions in a submenu? click one and
@@ -55,15 +56,15 @@ struct PhoneSession: Equatable {
 /// The env var is internal to the CLI (it uses it to hand a session over to a
 /// relaunched process); if a release drops it, step 3 falls back to a plain
 /// local resume with no /rc — still the conversation, just not on the phone.
-enum PhoneSessions {
+enum BackgroundSessions {
 
-    /// Every live phone session, newest first.
+    /// Every live background session (a `/rc` child), newest first.
     static func list(sessionsDir: URL = ClaudeActivity.sessionsDirectory,
                      projects: URL = ClaudeActivity.projectsDirectory,
                      arguments: (Int32) -> [String]? = ClaudeActivity.arguments(of:),
-                     isAlive: (Int32) -> Bool = { kill($0, 0) == 0 }) -> [PhoneSession] {
+                     isAlive: (Int32) -> Bool = { kill($0, 0) == 0 }) -> [BackgroundSession] {
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: sessionsDir.path) else { return [] }
-        let found: [(PhoneSession, Double)] = names.filter { $0.hasSuffix(".json") }.compactMap { name -> (PhoneSession, Double)? in
+        let found: [(BackgroundSession, Double)] = names.filter { $0.hasSuffix(".json") }.compactMap { name -> (BackgroundSession, Double)? in
             guard let data = try? Data(contentsOf: sessionsDir.appendingPathComponent(name)),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let pid = (json["pid"] as? NSNumber)?.int32Value,
@@ -79,7 +80,7 @@ enum PhoneSessions {
                 .appendingPathComponent(sessionId + ".jsonl")
             let head = readHead(of: transcript)
             let owner = head.flatMap { Self.owner(inHead: $0) }
-            let session = PhoneSession(pid: pid, sessionId: sessionId, bridgeSessionId: bridge, cwd: cwd,
+            let session = BackgroundSession(pid: pid, sessionId: sessionId, bridgeSessionId: bridge, cwd: cwd,
                                        status: json["status"] as? String ?? "",
                                        title: head.flatMap { Self.firstPrompt(inHead: $0) } ?? "(no prompt yet)",
                                        ownerAccount: owner?.account, ownerOrganization: owner?.organization)
@@ -158,10 +159,10 @@ enum PhoneSessions {
     /// script stops the headless child itself (see the type's doc for why). The
     /// pid is checked here and again in the script: a pid the menu showed a
     /// minute ago may belong to something else by then.
-    static func takeOver(_ session: PhoneSession) throws {
+    static func takeOver(_ session: BackgroundSession) throws {
         guard let argv = ClaudeActivity.arguments(of: session.pid), isRemoteChild(argv),
               argv.contains(where: { $0.hasSuffix(idTail(session.bridgeSessionId)) }) else { throw TakeOverError.gone }
-        insomniaInfo("PhoneSessions: taking over \(session.bridgeSessionId) (pid \(session.pid)) → Terminal")
+        insomniaInfo("BackgroundSessions: taking over \(session.bridgeSessionId) (pid \(session.pid)) → Terminal")
         try openInTerminal(session)
     }
 
@@ -171,9 +172,9 @@ enum PhoneSessions {
         id.split(separator: "_", maxSplits: 1).last.map(String.init) ?? id
     }
 
-    static func openInTerminal(_ session: PhoneSession) throws {
+    static func openInTerminal(_ session: BackgroundSession) throws {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("insomnia-phone-\(session.sessionId).command")
+            .appendingPathComponent("insomnia-background-\(session.sessionId).command")
         do {
             try script(for: session).write(to: url, atomically: true, encoding: .utf8)
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
@@ -192,7 +193,7 @@ enum PhoneSessions {
     /// found the way it is when typed; the script deletes itself first thing,
     /// and stops the headless child only once the shell is up. Absolute paths
     /// for `ps` / `grep`: a user's zsh may shadow them with functions.
-    static func script(for session: PhoneSession) -> String {
+    static func script(for session: BackgroundSession) -> String {
         let pid = session.pid
         let tail = quoted(idTail(session.bridgeSessionId))
         var env = ["CLAUDE_BRIDGE_REATTACH_SESSION=\(quoted(session.bridgeSessionId))"]

@@ -132,21 +132,21 @@ enum InsomniaMenu {
 
     /// 📱 under 🛰️: the sessions the phone opened, each one click away from a
     /// Terminal window that is still the same session on the phone.
-    static let phoneSessionsLabel = "📱 Phone sessions"
-    static func phoneSessionsLabel(count: Int) -> String { "\(phoneSessionsLabel) (\(count))" }
-    static let phoneSessionsTooltip = "Sessions opened from the phone or claude.ai on this Mac. "
+    static let backgroundSessionsLabel = "📡 Background"
+    static func backgroundSessionsLabel(count: Int) -> String { "\(backgroundSessionsLabel) (\(count))" }
+    static let backgroundSessionsTooltip = "The /rc sessions running in the background on this Mac, opened from the phone or claude.ai. "
         + "Click one to continue it in a Terminal window — it stays the same session on the phone."
-    static func phoneSessionRow(title: String, busy: Bool) -> String { (busy ? "⚙️ " : "💤 ") + title }
-    static func phoneSessionTooltip(cwd: String, busy: Bool) -> String {
+    static func backgroundSessionRow(title: String, busy: Bool) -> String { (busy ? "⚙️ " : "💤 ") + title }
+    static func backgroundSessionTooltip(cwd: String, busy: Bool) -> String {
         (busy ? "Working now. " : "Idle. ") + "Opens in Terminal, in \(cwd)."
     }
-    static let phoneBusyTitle = "This session is mid-turn"
-    static func phoneBusyText(title: String) -> String {
+    static let backgroundBusyTitle = "This session is mid-turn"
+    static func backgroundBusyText(title: String) -> String {
         "“\(title)” is working right now. Moving it to Terminal stops the current turn; "
             + "you can ask it to carry on from there."
     }
-    static let phoneBusyConfirm = "Stop and open in Terminal"
-    static let phoneFailedTitle = "Couldn't move the session to Terminal"
+    static let backgroundBusyConfirm = "Stop and open in Terminal"
+    static let backgroundFailedTitle = "Couldn't move the session to Terminal"
 
     static let floorEmoji = "🪫"
     static let floorLabel = "\(floorEmoji) Sleep under \(LidAwakePolicy.batteryFloorPercent)%"
@@ -175,37 +175,48 @@ enum InsomniaMenu {
     /// Whether a row is ticked — the current mode.
     static func isChecked(_ mode: LidAwakeMode, current: LidAwakeMode) -> Bool { mode == current }
 
-    // MARK: - The right-hand column (2026-10-14)
+    // MARK: - The tick in front, ⌘Q on the right (2026-10-14, ticks moved 2026-11-23)
     //
     // **No `NSMenuItem.state`, no `keyEquivalent`** — the same cure as Victor
-    // Effects' ✨ menu, for the same two reasons (Victor: *"make insomnia menu
-    // less wide, the same way you did for fx menu"*). One row in `.on` makes
-    // `NSMenu` open a check gutter down the left of every row, and one native
-    // ⌘Q adds a key-equivalent column of its own (~47 pt, measured in Effects'
-    // `MenuBar.titleInsets`) to the right of every title. Both are replaced by
-    // a single column drawn inside the titles, right-aligned on one tab stop:
-    // ✓ on the current mode and on the floor switch, ⌘Q on Quit.
+    // Effects' ✨ menu (Victor: *"make insomnia menu less wide"*): one native
+    // ⌘Q adds a key-equivalent column (~47 pt) to the right of every title.
+    // Both marks are drawn inside the titles instead.
+    //
+    // **The ✓ sits in front** (2026-11-23, Victor: *"put the ticks in front, not
+    // on the right"*): a left tab stop one tick wide, so the emojis line up
+    // whether a row is ticked or not. Only Quit keeps a right-hand mark, ⌘Q,
+    // right-aligned on a stop just past the longest title.
 
-    /// Smallest gap between the longest title and the column.
+    /// Smallest gap between the longest title and ⌘Q.
     static let columnGap: CGFloat = 14
 
     static func width(_ text: String) -> CGFloat {
         (text as NSString).size(withAttributes: [.font: NSFont.menuFont(ofSize: 0)]).width
     }
 
-    /// Where the column's right edge goes: just past the longest title.
+    /// Where every title starts: just past the ✓.
+    static var tickStop: CGFloat { (width(checkMark) + 5).rounded(.up) }
+
+    /// Where ⌘Q's right edge goes: just past the longest title.
     static func tabStop(titles: [NSAttributedString]) -> CGFloat {
         let longest = titles.map { $0.size().width }.max() ?? 0
-        return (longest + columnGap + max(width(checkMark), width(quitHint))).rounded(.up)
+        return (tickStop + longest + columnGap + width(quitHint)).rounded(.up)
     }
 
-    /// `title`, then a tab, then `mark` right-aligned at `tabStop`. An empty
-    /// mark still gets its tab, so every row carries the same stop.
-    static func columned(_ title: NSAttributedString, mark: String, tabStop: CGFloat) -> NSAttributedString {
-        let row = NSMutableAttributedString(attributedString: title)
-        row.append(NSAttributedString(string: "\t" + mark, attributes: [.font: NSFont.menuFont(ofSize: 0)]))
+    /// `✓` (or nothing), a tab to `tickStop`, the title, and — for Quit — a tab
+    /// to `tabStop` and the right-aligned hint.
+    static func row(_ title: NSAttributedString, ticked: Bool, hint: String = "",
+                    tabStop: CGFloat = 0) -> NSAttributedString {
+        let font: [NSAttributedString.Key: Any] = [.font: NSFont.menuFont(ofSize: 0)]
+        let row = NSMutableAttributedString(string: (ticked ? checkMark : "") + "\t", attributes: font)
+        row.append(title)
+        var stops = [NSTextTab(textAlignment: .left, location: tickStop)]
+        if !hint.isEmpty {
+            row.append(NSAttributedString(string: "\t" + hint, attributes: font))
+            stops.append(NSTextTab(textAlignment: .right, location: tabStop))
+        }
         let paragraph = NSMutableParagraphStyle()
-        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: tabStop)]
+        paragraph.tabStops = stops
         row.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: row.length))
         return row
     }

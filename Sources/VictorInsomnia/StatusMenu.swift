@@ -10,8 +10,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     private var floorItem: NSMenuItem!
     private var soundsItem: NSMenuItem!
     private var remoteControlItem: NSMenuItem!
-    private var phoneItem: NSMenuItem!
-    private let phoneMenu = NSMenu()
+    private var backgroundItem: NSMenuItem!
+    private let backgroundMenu = NSMenu()
     private var quitItem: NSMenuItem!
     private let lid: LidAwake
     private let remoteControl: ClaudeRemoteControl
@@ -50,11 +50,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         remoteControlItem.target = self
         remoteControlItem.toolTip = InsomniaMenu.remoteControlTooltip
         menu.addItem(remoteControlItem)
-        phoneItem = NSMenuItem(title: InsomniaMenu.phoneSessionsLabel, action: nil, keyEquivalent: "")
-        phoneItem.toolTip = InsomniaMenu.phoneSessionsTooltip
-        phoneMenu.autoenablesItems = false
-        phoneItem.submenu = phoneMenu
-        menu.addItem(phoneItem)
+        backgroundItem = NSMenuItem(title: InsomniaMenu.backgroundSessionsLabel, action: nil, keyEquivalent: "")
+        backgroundItem.toolTip = InsomniaMenu.backgroundSessionsTooltip
+        backgroundMenu.autoenablesItems = false
+        backgroundItem.submenu = backgroundMenu
+        menu.addItem(backgroundItem)
         menu.addItem(.separator())
         // No `keyEquivalent`: its column would widen the whole menu. ⌘Q is
         // drawn in the title and claimed in `menuHasKeyEquivalent` instead.
@@ -83,77 +83,74 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         layOutRows(counts: counts)
     }
 
-    /// Every row's title, with the ✓ / ⌘Q column on one tab stop measured
-    /// from the longest title (see `InsomniaMenu.columned`).
+    /// Every row's title, the ✓ in front on one tab stop and ⌘Q on Quit's
+    /// right (see `InsomniaMenu.row`).
     private func layOutRows(counts: ClaudeActivity.WorkingCounts?) {
         let mode = LidAwakeSettings.mode
-        var titles: [(NSMenuItem, NSAttributedString, String)] = LidAwakeMode.allCases.compactMap { each in
+        var rows: [(NSMenuItem, NSAttributedString, Bool)] = LidAwakeMode.allCases.compactMap { each in
             guard let item = modeItems[each] else { return nil }
-            return (item, InsomniaMenu.attributedLabel(each, counts: counts),
-                    InsomniaMenu.isChecked(each, current: mode) ? InsomniaMenu.checkMark : "")
+            return (item, InsomniaMenu.attributedLabel(each, counts: counts), InsomniaMenu.isChecked(each, current: mode))
         }
-        titles.append((awakeOnACItem, InsomniaMenu.plain(InsomniaMenu.awakeOnACLabel),
-                       LidAwakeSettings.staysAwakeOnAC ? InsomniaMenu.checkMark : ""))
-        titles.append((floorItem, InsomniaMenu.plain(InsomniaMenu.floorLabel),
-                       LidAwakeSettings.sleepsUnderFloor ? InsomniaMenu.checkMark : ""))
-        titles.append((soundsItem, InsomniaMenu.plain(InsomniaMenu.soundsLabel),
-                       LidAwakeSettings.playsSounds ? InsomniaMenu.checkMark : ""))
-        titles.append((remoteControlItem, InsomniaMenu.plain(InsomniaMenu.remoteControlLabel),
-                       ClaudeRemoteControlSettings.isEnabled ? InsomniaMenu.checkMark : ""))
-        if !phoneItem.isHidden {
-            titles.append((phoneItem, InsomniaMenu.plain(phoneItem.title), ""))
+        rows.append((awakeOnACItem, InsomniaMenu.plain(InsomniaMenu.awakeOnACLabel), LidAwakeSettings.staysAwakeOnAC))
+        rows.append((floorItem, InsomniaMenu.plain(InsomniaMenu.floorLabel), LidAwakeSettings.sleepsUnderFloor))
+        rows.append((soundsItem, InsomniaMenu.plain(InsomniaMenu.soundsLabel), LidAwakeSettings.playsSounds))
+        rows.append((remoteControlItem, InsomniaMenu.plain(InsomniaMenu.remoteControlLabel),
+                     ClaudeRemoteControlSettings.isEnabled))
+        if !backgroundItem.isHidden {
+            rows.append((backgroundItem, InsomniaMenu.plain(backgroundItem.title), false))
         }
-        titles.append((quitItem, InsomniaMenu.plain(InsomniaMenu.quitLabel), InsomniaMenu.quitHint))
-        let stop = InsomniaMenu.tabStop(titles: titles.map(\.1))
-        for (item, title, mark) in titles {
-            item.attributedTitle = InsomniaMenu.columned(title, mark: mark, tabStop: stop)
+        let quit = InsomniaMenu.plain(InsomniaMenu.quitLabel)
+        let stop = InsomniaMenu.tabStop(titles: rows.map(\.1) + [quit])
+        for (item, title, ticked) in rows {
+            item.attributedTitle = InsomniaMenu.row(title, ticked: ticked)
         }
+        quitItem.attributedTitle = InsomniaMenu.row(quit, ticked: false, hint: InsomniaMenu.quitHint, tabStop: stop)
     }
 
     func menuWillOpen(_ menu: NSMenu) {
         guard menu === self.menu else { return }
         menuIsOpen = true
-        fillPhoneMenu()
+        fillBackgroundMenu()
         refresh(counts: ClaudeActivity.workingCounts())
     }
 
-    /// 📱 Phone sessions: rebuilt on every open, hidden when there are none.
-    private func fillPhoneMenu() {
-        let sessions = PhoneSessions.list()
-        phoneMenu.removeAllItems()
-        phoneItem.isHidden = sessions.isEmpty
-        phoneItem.title = InsomniaMenu.phoneSessionsLabel(count: sessions.count)
+    /// 📡 Background: rebuilt on every open, hidden when there are none.
+    private func fillBackgroundMenu() {
+        let sessions = BackgroundSessions.list()
+        backgroundMenu.removeAllItems()
+        backgroundItem.isHidden = sessions.isEmpty
+        backgroundItem.title = InsomniaMenu.backgroundSessionsLabel(count: sessions.count)
         for session in sessions {
-            let item = NSMenuItem(title: InsomniaMenu.phoneSessionRow(title: session.title, busy: session.isBusy),
-                                  action: #selector(takeOverPhoneSession(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: InsomniaMenu.backgroundSessionRow(title: session.title, busy: session.isBusy),
+                                  action: #selector(takeOverBackgroundSession(_:)), keyEquivalent: "")
             item.target = self
-            item.representedObject = PhoneSessionBox(session)
-            item.toolTip = InsomniaMenu.phoneSessionTooltip(cwd: session.cwd, busy: session.isBusy)
-            phoneMenu.addItem(item)
+            item.representedObject = BackgroundSessionBox(session)
+            item.toolTip = InsomniaMenu.backgroundSessionTooltip(cwd: session.cwd, busy: session.isBusy)
+            backgroundMenu.addItem(item)
         }
     }
 
     /// Mid-turn, the move cuts the turn short — asked first, never silently.
-    @objc private func takeOverPhoneSession(_ sender: NSMenuItem) {
-        guard let session = (sender.representedObject as? PhoneSessionBox)?.session else { return }
+    @objc private func takeOverBackgroundSession(_ sender: NSMenuItem) {
+        guard let session = (sender.representedObject as? BackgroundSessionBox)?.session else { return }
         if session.isBusy {
             NSApp.activate(ignoringOtherApps: true)
             let alert = NSAlert()
-            alert.messageText = InsomniaMenu.phoneBusyTitle
-            alert.informativeText = InsomniaMenu.phoneBusyText(title: session.title)
-            alert.addButton(withTitle: InsomniaMenu.phoneBusyConfirm)
+            alert.messageText = InsomniaMenu.backgroundBusyTitle
+            alert.informativeText = InsomniaMenu.backgroundBusyText(title: session.title)
+            alert.addButton(withTitle: InsomniaMenu.backgroundBusyConfirm)
             alert.addButton(withTitle: "Cancel")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                try PhoneSessions.takeOver(session)
+                try BackgroundSessions.takeOver(session)
             } catch {
-                insomniaError("PhoneSessions: \(session.bridgeSessionId): \(error)")
+                insomniaError("BackgroundSessions: \(session.bridgeSessionId): \(error)")
                 DispatchQueue.main.async {
                     NSApp.activate(ignoringOtherApps: true)
                     let alert = NSAlert()
-                    alert.messageText = InsomniaMenu.phoneFailedTitle
+                    alert.messageText = InsomniaMenu.backgroundFailedTitle
                     alert.informativeText = "\(error)"
                     alert.runModal()
                 }
@@ -221,7 +218,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 }
 
 /// `representedObject` wants a class.
-private final class PhoneSessionBox: NSObject {
-    let session: PhoneSession
-    init(_ session: PhoneSession) { self.session = session }
+private final class BackgroundSessionBox: NSObject {
+    let session: BackgroundSession
+    init(_ session: BackgroundSession) { self.session = session }
 }

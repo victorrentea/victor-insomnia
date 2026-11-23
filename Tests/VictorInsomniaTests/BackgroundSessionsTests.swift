@@ -1,10 +1,10 @@
 import XCTest
 @testable import VictorInsomnia
 
-/// 📱 Phone sessions: which presence files make a row, what the row says, and
+/// 📡 Background: which presence files make a row, what the row says, and
 /// what the Terminal window runs. The move itself (kill + Terminal) was proved
-/// live against a throwaway session; see `PhoneSessions`.
-final class PhoneSessionsTests: XCTestCase {
+/// live against a throwaway session; see `BackgroundSessions`.
+final class BackgroundSessionsTests: XCTestCase {
 
     private var root: URL!
     private var sessions: URL { root.appendingPathComponent("sessions") }
@@ -34,8 +34,8 @@ final class PhoneSessionsTests: XCTestCase {
             .write(to: dir.appendingPathComponent(sessionId + ".jsonl"), atomically: true, encoding: .utf8)
     }
 
-    private func list(remotePids: Set<Int32>) -> [PhoneSession] {
-        PhoneSessions.list(sessionsDir: sessions, projects: projects,
+    private func list(remotePids: Set<Int32>) -> [BackgroundSession] {
+        BackgroundSessions.list(sessionsDir: sessions, projects: projects,
                            arguments: { remotePids.contains($0) ? ["claude", "--print", "--sdk-url", "x"] : ["claude", "-p"] },
                            isAlive: { _ in true })
     }
@@ -47,7 +47,7 @@ final class PhoneSessionsTests: XCTestCase {
         try presence(pid: 4, sessionId: "d", bridge: nil)                           // headless, never on the phone
         try presence(pid: 5, sessionId: "e", bridge: "session_01E", entrypoint: "cli") // a terminal with /rc
         try presence(pid: 6, sessionId: "f", bridge: "session_01F")                 // dead
-        let found = PhoneSessions.list(
+        let found = BackgroundSessions.list(
             sessionsDir: sessions, projects: projects,
             arguments: { [1, 2, 4, 5, 6].contains($0) ? ["claude", "--sdk-url", "u"] : ["claude", "-p"] },
             isAlive: { $0 != 6 })
@@ -72,7 +72,7 @@ final class PhoneSessionsTests: XCTestCase {
 
     func testALongPromptIsCutWithAnEllipsis() {
         let head = #"{"type":"user","message":{"role":"user","content":"\#(String(repeating: "x", count: 100))"}}"#
-        let title = PhoneSessions.firstPrompt(inHead: head, limit: 20)
+        let title = BackgroundSessions.firstPrompt(inHead: head, limit: 20)
         XCTAssertEqual(title?.count, 20)
         XCTAssertEqual(title?.hasSuffix("…"), true)
     }
@@ -85,9 +85,9 @@ final class PhoneSessionsTests: XCTestCase {
     /// The env var is what keeps it the **same** session on the phone;
     /// `--remote-control` would mint a new one.
     func testTheTerminalReattachesToTheSameSessionInsteadOfMintingANewOne() {
-        let s = PhoneSession(pid: 1, sessionId: "uuid-1", bridgeSessionId: "session_01A", cwd: "/w/it's here",
+        let s = BackgroundSession(pid: 1, sessionId: "uuid-1", bridgeSessionId: "session_01A", cwd: "/w/it's here",
                              status: "idle", title: "t", ownerAccount: "acc", ownerOrganization: nil)
-        let script = PhoneSessions.script(for: s)
+        let script = BackgroundSessions.script(for: s)
         XCTAssertTrue(script.hasPrefix("#!/bin/zsh -il\n"))
         XCTAssertTrue(script.contains("CLAUDE_BRIDGE_REATTACH_SESSION='session_01A'"))
         XCTAssertTrue(script.contains("CLAUDE_BRIDGE_REATTACH_OWNER_ACCT='acc'"))
@@ -101,9 +101,9 @@ final class PhoneSessionsTests: XCTestCase {
     /// app, where the shell's start-up left the session without a process long
     /// enough for the host to spawn a new one.
     func testTheHeadlessCopyIsStoppedByTheScriptJustBeforeTheReattach() {
-        let s = PhoneSession(pid: 4242, sessionId: "u", bridgeSessionId: "session_01Tail", cwd: "/w",
+        let s = BackgroundSession(pid: 4242, sessionId: "u", bridgeSessionId: "session_01Tail", cwd: "/w",
                              status: "idle", title: "t", ownerAccount: nil, ownerOrganization: nil)
-        let script = PhoneSessions.script(for: s)
+        let script = BackgroundSessions.script(for: s)
         let guardAt = script.range(of: "/bin/ps -o command= -p 4242 | /usr/bin/grep -q -- '01Tail'")
         let killAt = script.range(of: "kill 4242")
         let execAt = script.range(of: "exec claude")
@@ -115,7 +115,7 @@ final class PhoneSessionsTests: XCTestCase {
 
     /// The presence file says `session_…`, the child's argv says `cse_…`.
     func testBothPrefixesOfOneSessionShareTheirTail() {
-        XCTAssertEqual(PhoneSessions.idTail("session_01GyhjeKBtcgwwYAYzmANCAr"),
-                       PhoneSessions.idTail("cse_01GyhjeKBtcgwwYAYzmANCAr"))
+        XCTAssertEqual(BackgroundSessions.idTail("session_01GyhjeKBtcgwwYAYzmANCAr"),
+                       BackgroundSessions.idTail("cse_01GyhjeKBtcgwwYAYzmANCAr"))
     }
 }

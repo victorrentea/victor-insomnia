@@ -110,13 +110,17 @@ tmux capture-pane -p -t claude-rc # the banner, without attaching
 curl -s 127.0.0.1:55125/test/claude-rc
 ```
 
-## 📱 Phone sessions (2026-11-23)
+## 📡 Background (2026-11-23)
+
+*Named „Background”, not „Phone sessions” (Victor, same evening): they are the
+`/rc` sessions the host runs in the background, opened from the phone **or**
+claude.ai.*
 
 The row under 🛰️ Claude RC, shown only while the phone has sessions open on
 this Mac: a submenu with one row per session (`⚙️` working, `💤` idle, the
 first prompt as the name). **Click one and it continues in a Terminal window,
-still the same session on the phone.** Code: `PhoneSessions.swift`; proof:
-`GET /test/phone-sessions` (read-only — the move itself has no HTTP hook, so a
+still the same session on the phone.** Code: `BackgroundSessions.swift`; proof:
+`GET /test/background-sessions` (read-only — the move itself has no HTTP hook, so a
 web page cannot trigger a kill through localhost).
 
 What the click does, each step measured on CLI 2.1.330 with a throwaway session:
