@@ -34,10 +34,9 @@ struct PhoneSession: Equatable {
 /// 1. The phone session's transcript **is local** — the presence file
 ///    `~/.claude/sessions/<pid>.json` names it (`sessionId`) next to the id the
 ///    phone knows (`bridgeSessionId`).
-/// 2. Stop the headless child (`SIGTERM`). The host does **not** archive the
-///    session for that: it stays on the phone, offline.
-/// 3. In a Terminal: `CLAUDE_BRIDGE_REATTACH_SESSION=<bridgeSessionId> claude
-///    --resume <sessionId>`. The env var turns Remote Control on and
+/// 2. In a Terminal: stop the headless child (`SIGTERM`; the host does **not**
+///    archive the session for that), then at once `CLAUDE_BRIDGE_REATTACH_SESSION=
+///    <bridgeSessionId> claude --resume <sessionId>`. The env var turns Remote Control on and
 ///    **reattaches to that same session** — same URL, same entry on the phone,
 ///    whole history; a message sent from claude.ai was answered in the terminal.
 ///
@@ -45,6 +44,14 @@ struct PhoneSession: Equatable {
 /// *new* session on the phone, and the old entry stays behind. Writing into the
 /// old one then made the host spawn a fresh headless child **on the same
 /// transcript** as the terminal — two writers, a forked conversation.
+///
+/// **The stop happens inside the Terminal script, right before `exec claude`**,
+/// not when the menu is clicked. The first version stopped it from the app: an
+/// interactive login zsh takes ~25 s to start on Victor's Mac, a message sent
+/// from the phone in that gap made the host spawn a new headless child, and
+/// that child kept the session — the Terminal got nothing. Stopped from the
+/// script, the gap is the CLI's own start-up, ~1.5 s.
+///
 /// The env var is internal to the CLI (it uses it to hand a session over to a
 /// relaunched process); if a release drops it, step 3 falls back to a plain
 /// local resume with no /rc — still the conversation, just not on the phone.
@@ -138,29 +145,23 @@ enum PhoneSessions {
     // MARK: - Moving one into a Terminal
 
     enum TakeOverError: Error, CustomStringConvertible {
-        case gone, wouldNotStop, launchFailed(String)
+        case gone, launchFailed(String)
         var description: String {
             switch self {
             case .gone: return "the session is no longer running"
-            case .wouldNotStop: return "the background process did not stop"
             case .launchFailed(let why): return "Terminal did not open: \(why)"
             }
         }
     }
 
-    /// Stop the headless child, then reopen the session in Terminal on the same
-    /// phone entry. The pid is checked again right before the signal: a pid the
-    /// menu showed a minute ago may belong to something else by now.
+    /// Reopen the session in Terminal on the same phone entry; the Terminal
+    /// script stops the headless child itself (see the type's doc for why). The
+    /// pid is checked here and again in the script: a pid the menu showed a
+    /// minute ago may belong to something else by then.
     static func takeOver(_ session: PhoneSession) throws {
         guard let argv = ClaudeActivity.arguments(of: session.pid), isRemoteChild(argv),
               argv.contains(where: { $0.hasSuffix(idTail(session.bridgeSessionId)) }) else { throw TakeOverError.gone }
         insomniaInfo("PhoneSessions: taking over \(session.bridgeSessionId) (pid \(session.pid)) → Terminal")
-        kill(session.pid, SIGTERM)
-        guard waitForExit(session.pid, seconds: 5) else {
-            kill(session.pid, SIGKILL)
-            guard waitForExit(session.pid, seconds: 2) else { throw TakeOverError.wouldNotStop }
-            return try openInTerminal(session)
-        }
         try openInTerminal(session)
     }
 
@@ -168,15 +169,6 @@ enum PhoneSessions {
     /// the child's argv carries the `cse_` one.
     static func idTail(_ id: String) -> String {
         id.split(separator: "_", maxSplits: 1).last.map(String.init) ?? id
-    }
-
-    static func waitForExit(_ pid: Int32, seconds: Double) -> Bool {
-        let deadline = Date().addingTimeInterval(seconds)
-        while Date() < deadline {
-            if kill(pid, 0) != 0 { return true }
-            usleep(100_000)
-        }
-        return kill(pid, 0) != 0
     }
 
     static func openInTerminal(_ session: PhoneSession) throws {
@@ -197,8 +189,12 @@ enum PhoneSessions {
     }
 
     /// What the Terminal window runs. An interactive login zsh, so `claude` is
-    /// found the way it is when typed; the script deletes itself first thing.
+    /// found the way it is when typed; the script deletes itself first thing,
+    /// and stops the headless child only once the shell is up. Absolute paths
+    /// for `ps` / `grep`: a user's zsh may shadow them with functions.
     static func script(for session: PhoneSession) -> String {
+        let pid = session.pid
+        let tail = quoted(idTail(session.bridgeSessionId))
         var env = ["CLAUDE_BRIDGE_REATTACH_SESSION=\(quoted(session.bridgeSessionId))"]
         if let account = session.ownerAccount { env.append("CLAUDE_BRIDGE_REATTACH_OWNER_ACCT=\(quoted(account))") }
         if let org = session.ownerOrganization { env.append("CLAUDE_BRIDGE_REATTACH_OWNER_ORG=\(quoted(org))") }
@@ -206,6 +202,11 @@ enum PhoneSessions {
         #!/bin/zsh -il
         rm -f -- "$0"
         cd -- \(quoted(session.cwd)) || exit 1
+        if /bin/ps -o command= -p \(pid) | /usr/bin/grep -q -- \(tail); then
+          kill \(pid)
+          for i in {1..50}; do kill -0 \(pid) 2>/dev/null || break; /bin/sleep 0.1; done
+          kill -0 \(pid) 2>/dev/null && kill -9 \(pid)
+        fi
         export \(env.joined(separator: " "))
         exec claude --resume \(quoted(session.sessionId))
 

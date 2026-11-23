@@ -124,11 +124,12 @@ What the click does, each step measured on CLI 2.1.330 with a throwaway session:
 1. **Find it.** `~/.claude/sessions/<pid>.json` of every `claude --print
    --sdk-url …` child names the local transcript (`sessionId`) and the phone's
    id (`bridgeSessionId`, `session_01…`). The transcript is local.
-2. **Stop the headless child** — `SIGTERM`, `SIGKILL` after 5 s, the pid's argv
-   re-checked first. The host does not archive the session for that.
-3. **Reopen it**: a self-deleting `.command` file opened with Terminal runs
-   `CLAUDE_BRIDGE_REATTACH_SESSION=<bridgeSessionId> claude --resume <sessionId>`
-   in the session's cwd. The env var turns Remote Control on and **reattaches
+2. **Open Terminal** on a self-deleting `.command` file (an interactive login
+   zsh, in the session's cwd).
+3. **The script stops the headless child** — `SIGTERM`, `kill -9` after 5 s,
+   the pid's argv re-checked first; the host does not archive the session for
+   that — **and at once** runs
+   `CLAUDE_BRIDGE_REATTACH_SESSION=<bridgeSessionId> claude --resume <sessionId>`. The env var turns Remote Control on and **reattaches
    to the same session**: same URL, same entry on the phone, full history; a
    message from claude.ai was answered by the terminal and no headless child
    came back.
@@ -139,10 +140,21 @@ A session mid-turn asks first: the move cuts the turn short.
 interactive /rc session archives on exit, as it always does. It is not lost —
 claude.ai shows *Unarchive*, and `claude --resume` still has the transcript.
 
-Proved end to end on 2026-11-23: `takeOver` on a fresh session started from
-claude.ai → the presence file turned `cli`, same `bridgeSessionId`, the row left
-the submenu, and a message sent from claude.ai was answered by the Terminal (the
-footer switched to the terminal's effort level).
+**Why the stop is in the script, not in the app** (first version, same day):
+the app killed the child, then opened Terminal; the shell took ~25 s to start,
+a message sent from claude.ai in that gap made the host re-queue the work and
+spawn a **new** headless child, and that child kept the session — the Terminal
+never got a message. Stopped from the script, the gap is the CLI's own start-up
+(~1.5 s). A message landing inside those 1.5 s can still bring a child back.
+
+**How to tell who answered** — not from claude.ai's footer, which fooled the
+first test: each transcript line carries `entrypoint`, `sdk-cli` for the
+headless child, `cli` for the Terminal.
+
+Proved end to end on 2026-11-23 (`takeOver` on a fresh session started from
+claude.ai): one message sent while the Terminal was still starting and one
+after, both written with `entrypoint: cli`, no headless child came back, and
+the row left the submenu.
 
 **Dead end: `claude --resume <id> --remote-control`.** It reopens the
 conversation but mints a **new** phone session; the old entry stays, offline.

@@ -97,6 +97,22 @@ final class PhoneSessionsTests: XCTestCase {
         XCTAssertTrue(script.contains(#"cd -- '/w/it'\''s here'"#))
     }
 
+    /// Stopped from the script, right before `exec claude` — never from the
+    /// app, where the shell's start-up left the session without a process long
+    /// enough for the host to spawn a new one.
+    func testTheHeadlessCopyIsStoppedByTheScriptJustBeforeTheReattach() {
+        let s = PhoneSession(pid: 4242, sessionId: "u", bridgeSessionId: "session_01Tail", cwd: "/w",
+                             status: "idle", title: "t", ownerAccount: nil, ownerOrganization: nil)
+        let script = PhoneSessions.script(for: s)
+        let guardAt = script.range(of: "/bin/ps -o command= -p 4242 | /usr/bin/grep -q -- '01Tail'")
+        let killAt = script.range(of: "kill 4242")
+        let execAt = script.range(of: "exec claude")
+        XCTAssertNotNil(guardAt)
+        XCTAssertNotNil(killAt)
+        XCTAssertLessThan(guardAt!.lowerBound, killAt!.lowerBound)
+        XCTAssertLessThan(killAt!.lowerBound, execAt!.lowerBound)
+    }
+
     /// The presence file says `session_…`, the child's argv says `cse_…`.
     func testBothPrefixesOfOneSessionShareTheirTail() {
         XCTAssertEqual(PhoneSessions.idTail("session_01GyhjeKBtcgwwYAYzmANCAr"),
