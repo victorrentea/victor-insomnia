@@ -135,6 +135,15 @@ What the click does, each step measured on CLI 2.1.330 with a throwaway session:
 
 A session mid-turn asks first: the move cuts the turn short.
 
+**Closing that Terminal archives the session on the phone** (seen live): an
+interactive /rc session archives on exit, as it always does. It is not lost —
+claude.ai shows *Unarchive*, and `claude --resume` still has the transcript.
+
+Proved end to end on 2026-11-23: `takeOver` on a fresh session started from
+claude.ai → the presence file turned `cli`, same `bridgeSessionId`, the row left
+the submenu, and a message sent from claude.ai was answered by the Terminal (the
+footer switched to the terminal's effort level).
+
 **Dead end: `claude --resume <id> --remote-control`.** It reopens the
 conversation but mints a **new** phone session; the old entry stays, offline.
 Writing into the old one makes the host spawn a fresh headless child **on the
